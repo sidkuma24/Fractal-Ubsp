@@ -39,15 +39,21 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
+
 #include "def.h"
 #define EXTERN
 #include "globals.h"
 #include "triangle.h"
 #include "prot.h"
 
+ using namespace cv;
+
 int main(int argc, char **argv)
 {
-  int i,h,k,max;
+  int i,k,max;
   char *p,*pp;
   int int_max_alfa;
   clock_t t;
@@ -59,18 +65,32 @@ int main(int argc, char **argv)
 
   getopt_enc(argc,argv);
 
-  pp = "";
-  p = filein;
-  while(*p) {       /* Find the last dot in the file name */
-    if(*p == '.') 
-       pp = p + 1;
-    p++;
-  }
+  // pp = "";
+  // p = filein;
+  // while(*p) {        Find the last dot in the file name 
+  //   if(*p == '.') 
+  //      pp = p + 1;
+  //   p++;
+  // }
 
-  if(!strcmp(pp,"pgm"))
-     readimage_pgm(filein,&image_width,&image_height);  
-  else
-     readimage_raw(filein);  
+  // if(!strcmp(pp,"pgm"))
+  //    readimage_pgm(filein,&image_width,&image_height);  
+  // else
+  //    readimage_raw(filein);  
+
+  Mat input_image = imread(filein, CV_LOAD_IMAGE_GRAYSCALE);
+    int w = input_image.cols;
+    int h = input_image.rows;
+    matrix_allocate(image, w, h, PIXEL);
+
+    for (int iii = 0; iii < h; iii++) {
+        for (int jjj = 0; jjj < w; jjj++) {
+            image[jjj][iii] = input_image.at<uchar>(jjj, iii);
+        }
+    }
+
+  image_width = w;
+    image_height = h;
 
   max = image_height;
   if(image_width > image_height ) 

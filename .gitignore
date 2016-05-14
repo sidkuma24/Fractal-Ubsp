@@ -1,0 +1,10 @@
+fcom
+fdcom
+fencode
+log.txt
+*.cmake
+CMakeFiles/
+CMakeCache.txt
+lena.dec.pgm
+lena.ifs
+Makefile

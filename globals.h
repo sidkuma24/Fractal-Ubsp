@@ -35,6 +35,7 @@
 
 
 #include<stdio.h>
+#include<string.h>
 #include "nn_search.h"
 #include "def.h"
 
@@ -196,8 +197,8 @@ EXTERN double **contract;
 EXTERN double **range;
 EXTERN double **range_tmp;
 EXTERN double **flip_range;
-EXTERN double (*Coding) ();
-EXTERN void (*Indexing) ();
+EXTERN double (*Coding) (int, int, int, int*, int*, int*, int*, int*);
+EXTERN void (*Indexing) (int, int);
 EXTERN int method INIT(= MassCenter);
 
 
