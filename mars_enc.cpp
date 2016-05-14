@@ -79,18 +79,18 @@ int main(int argc, char **argv)
   //    readimage_raw(filein);  
 
   Mat input_image = imread(filein, CV_LOAD_IMAGE_GRAYSCALE);
-    int w = input_image.cols;
-    int h = input_image.rows;
-    matrix_allocate(image, w, h, PIXEL);
+  int w = input_image.cols;
+  int h = input_image.rows;
+  matrix_allocate(image, w, h, PIXEL);
 
-    for (int iii = 0; iii < h; iii++) {
-        for (int jjj = 0; jjj < w; jjj++) {
-            image[jjj][iii] = input_image.at<uchar>(jjj, iii);
-        }
-    }
+  for (int iii = 0; iii < w; iii++) {
+      for (int jjj = 0; jjj < h; jjj++) {
+          image[jjj][iii] = input_image.at<uchar>(jjj, iii);
+      }
+  }
 
   image_width = w;
-    image_height = h;
+  image_height = h;
 
   max = image_height;
   if(image_width > image_height ) 
