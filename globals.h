@@ -34,8 +34,9 @@
 
 
 
-#include<stdio.h>
-#include<string.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "nn_search.h"
 #include "def.h"
 
@@ -113,6 +114,8 @@ struct t_node {
            short size;
            double dx;
            double dy;
+           short um;  // for color image: uchannel mean
+           short vm;  // for color image: vchannel mean
            short sym_op;
            double alfa, beta;
            struct t_node *next;
@@ -192,6 +195,8 @@ EXTERN char filein[50];
 EXTERN char fileout[50];
 
 EXTERN PIXEL **image;
+EXTERN PIXEL **image_uch;
+EXTERN PIXEL **image_vch;
 EXTERN PIXEL **qtt;
 EXTERN double **contract;
 EXTERN double **range;
@@ -200,5 +205,5 @@ EXTERN double **flip_range;
 EXTERN double (*Coding) (int, int, int, int*, int*, int*, int*, int*);
 EXTERN void (*Indexing) (int, int);
 EXTERN int method INIT(= MassCenter);
-
+EXTERN int isColor INIT(= 1);
 

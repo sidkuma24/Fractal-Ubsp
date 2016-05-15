@@ -55,7 +55,7 @@
  }
 
 
-#define swap(a,b,TYPE)      {TYPE _temp; _temp=b; b=a; a= _temp;}
+#define swap1(a,b,TYPE)      {TYPE _temp; _temp=b; b=a; a= _temp;}
 
 #define bound(a)   ((a) < 0.0 ? 0 : ((a)>255.0? 255 : a))
 

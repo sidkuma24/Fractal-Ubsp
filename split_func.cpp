@@ -94,6 +94,43 @@ double variance(int width,int height,int atx, int aty)
 
 }
 
+double u_mean(int width,int height,int atx, int aty)
+{
+  int i,j;
+  double sum2 = 0.0;
+  double sum = 0.0;
+  double mean2;
+  double mean;
+
+  for(i=atx;i<atx + height;i++)
+  for(j=aty;j<aty + width;j++) {
+     sum  += image_uch[i][j];
+  }
+  
+
+  mean  = sum / (width * height);
+
+  return mean;
+
+}
+
+double v_mean(int width,int height,int atx, int aty)
+{
+  int i,j;
+  double sum = 0.0;
+  double mean;
+
+  for(i=atx;i<atx + height;i++)
+  for(j=aty;j<aty + width;j++) {
+     sum  += image_vch[i][j];
+  }
+  
+
+  mean  = sum / (width * height);
+
+  return mean;
+
+}
 
 double variance_2(int size, double **block, int atx, int aty)
 {

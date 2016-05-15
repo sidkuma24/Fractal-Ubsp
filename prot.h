@@ -43,6 +43,8 @@ double Saupe_FisherCoding(int,int,int,int *,int *,int *,int *,int *);
 double entropy(int, int,int,int);
 double variance(int, int,int,int);
 double variance_2(int, double **, int, int);
+double u_mean(int, int,int,int);
+double v_mean(int, int,int,int);
 int hurtgen_class(int ,double **);
 int pack(int , long , FILE *);
 int variance_class(int ,double **);

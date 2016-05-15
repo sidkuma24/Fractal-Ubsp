@@ -110,8 +110,8 @@ int variance_class(int size,double **block)
   for (i=2; i>=0; --i)
   for (j=0; j<=i; ++j)
      if (a[j]<a[j+1]) {
-       swap(order[j], order[j+1],int)
-       swap(a[j], a[j+1],double)
+       swap1(order[j], order[j+1],int)
+       swap1(a[j], a[j+1],double)
      }
 
   return  match(order);
@@ -172,8 +172,8 @@ void newclass(int size,double **block,int *isom,int *clas)
   for (i=2; i>=0; --i)
   for (j=0; j<=i; ++j)
      if (a[j]<a[j+1]) {
-       swap(order[j], order[j+1],int)
-       swap(a[j], a[j+1],double)
+       swap1(order[j], order[j+1],int)
+       swap1(a[j], a[j+1],double)
      }
 
   index = match(order);
@@ -304,7 +304,7 @@ void ComputeMcVectors(double **block,double **block_tmp,
      else  
         vector[i] = TWOPI + theta;
 
-     swap(block_1, block_2, double **)
+     swap1(block_1, block_2, double **)
   }
 
 }

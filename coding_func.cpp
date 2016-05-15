@@ -1172,6 +1172,12 @@ void quadtree(int atx,int aty,int size,double tol_entr,
         }
         pack(N_BITALFA, (long)qalfa, fp);
         pack(N_BITBETA, (long)qbeta, fp);
+        if(isColor){
+          double um = u_mean(size,size,atx,aty);
+          double vm = v_mean(size,size,atx,aty);
+          pack(8,(long)um,fp);
+          pack(8,(long)vm,fp);
+        }
         zero_alfa_transform ++;
         if(qalfa != zeroalfa) {
            zero_alfa_transform --;

@@ -38,6 +38,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <vector>
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
@@ -78,19 +79,39 @@ int main(int argc, char **argv)
   // else
   //    readimage_raw(filein);  
 
-  Mat input_image = imread(filein, CV_LOAD_IMAGE_GRAYSCALE);
-  int w = input_image.cols;
-  int h = input_image.rows;
-  matrix_allocate(image, w, h, PIXEL);
+  Mat input_image = imread(filein);
+    int w = input_image.cols;
+  int h = input_image.rows;   
 
-  for (int iii = 0; iii < w; iii++) {
-      for (int jjj = 0; jjj < h; jjj++) {
-          image[jjj][iii] = input_image.at<uchar>(jjj, iii);
-      }
-  }
 
   image_width = w;
   image_height = h;
+
+  std::vector<Mat> yuvChannels(3);
+  if(input_image.channels() == 3){
+    isColor = 1;
+    cvtColor(input_image, input_image, CV_BGR2YUV);
+    split(input_image, yuvChannels);
+    matrix_allocate(image, w, h, PIXEL);
+    matrix_allocate(image_uch, w, h, PIXEL);
+    matrix_allocate(image_vch, w, h, PIXEL);
+    for (int iii = 0; iii < w; iii++) {
+      for (int jjj = 0; jjj < h; jjj++) {
+        image[jjj][iii] = yuvChannels[0].at<uchar>(jjj, iii);
+        image_uch[jjj][iii] = yuvChannels[1].at<uchar>(jjj, iii);
+        image_vch[jjj][iii] = yuvChannels[2].at<uchar>(jjj, iii);
+      }
+    }
+  }
+  else{
+    matrix_allocate(image, w, h, PIXEL);
+    for (int iii = 0; iii < w; iii++) {
+      for (int jjj = 0; jjj < h; jjj++) {
+        image[jjj][iii] = input_image.at<uchar>(jjj, iii);
+      }
+    }
+  }
+
 
   max = image_height;
   if(image_width > image_height ) 
@@ -226,12 +247,17 @@ int main(int argc, char **argv)
   pack(12,(long)image_width,fp);
   pack(12,(long)image_height,fp);
   pack(8,(long) int_max_alfa,fp);
+  if(isColor)
+    pack(1,(long)1,fp);
+  else
+    pack(1,(long)0,fp);
 
   printf("\n Image Entropy      : %f\n", entropy(image_width,image_height,0,0));
   printf(" Image Variance     : %f\n", variance(image_width,image_height,0,0));
   printf(" Entropy threshold  : %f\n",T_ENT);
   printf(" Variance threshold : %f\n",T_VAR);
-  printf(" Rms threshold      : %f\n\n",T_RMS);
+  printf(" Rms threshold      : %f\n",T_RMS);
+  printf(" Color              : %s\n\n", isColor?"True":"False");
 
   quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
 
