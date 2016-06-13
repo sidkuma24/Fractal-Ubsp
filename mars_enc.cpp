@@ -79,7 +79,7 @@ int main(int argc, char **argv)
   // else
   //    readimage_raw(filein);  
 
-  Mat input_image = imread(filein);
+  Mat input_image = imread(filein, CV_LOAD_IMAGE_ANYDEPTH);
     int w = input_image.cols;
   int h = input_image.rows;   
 
@@ -90,6 +90,7 @@ int main(int argc, char **argv)
   std::vector<Mat> yuvChannels(3);
   if(input_image.channels() == 3){
     isColor = 1;
+    
     cvtColor(input_image, input_image, CV_BGR2YUV);
     split(input_image, yuvChannels);
     matrix_allocate(image, w, h, PIXEL);
@@ -213,6 +214,7 @@ int main(int argc, char **argv)
 
   bits_per_coordinate_w = ceil(log(image_width  / SHIFT ) / log(2.0));
   bits_per_coordinate_h = ceil(log(image_height / SHIFT ) / log(2.0));
+
 
   for(k=0;k<virtual_size;k++)
   for(h=0;h<virtual_size;h++)

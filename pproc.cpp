@@ -46,6 +46,7 @@
 #include "prot.h"
 #include <vector>
 
+// FILE * output;
 
 int main(int argc, char **argv)
 {
@@ -55,9 +56,25 @@ int main(int argc, char **argv)
 
   getopt_dec(argc, argv);
 
-  if ((input = fopen(filein, "r")) == NULL)
+  if ((input = fopen(filein, "r")) == NULL){
+    printf("error: Cannot open file %s\n", filein);
     return -1;
+  }
 
+  // Open the output file
+  int i = 0;
+  char fileout[100];
+  while (filein[i] != '.') {
+      fileout[i] = filein[i];
+      i++;
+  }
+  strcpy(&fileout[i], ".ifsp");
+
+  if ((output = fopen(fileout, "w")) == NULL){
+    printf("error: Cannot open file %s\n", filein);
+    return -1;
+  }
+    
   unpack(-2,input);    /*Initialize unpack */
 
   N_BITALFA      = (int)unpack(4,input);
@@ -71,6 +88,18 @@ int main(int argc, char **argv)
   isColor        = (int)unpack(1,input);
 
   printf("Color: %s\n", isColor?"True":"False");
+
+  /* Write the header to the output file */
+  pack(4, N_BITALFA    , output);
+  pack(4, N_BITBETA    , output);
+  pack(7, min_size     , output);
+  pack(7, max_size     , output);
+  pack(6, SHIFT        , output);
+  pack(12, image_width , output);
+  pack(12, image_height, output);
+  pack(8, int_max_alfa , output);
+  pack(1, isColor      , output);
+
 
   bits_per_coordinate_w = ceil(log(image_width  / SHIFT ) / log(2.0));
   bits_per_coordinate_h = ceil(log(image_height / SHIFT ) / log(2.0));
@@ -92,7 +121,20 @@ int main(int argc, char **argv)
   printf("done\n");
   fflush(stdout);
 
-    return 0;
+  int bit_depth = 0;
+  while(bit_depth < 8){       /* TODO: 8 is for color bits, change this to the maximum bit length parameter */
+    printf("%s\n", "Press [Enter] to write the MSB of parameters:");
+    getchar();
+    write_details(bit_depth);
+    bit_depth++;
+  }
+
+  // Close the files
+  pack(-1, (long)0, output);
+  pack(-2, (long)0, output);
+  fclose(output);
+
+  return 0;
 }
 
 void read_transformations(int atx,int aty,int size)
@@ -114,50 +156,69 @@ void read_transformations(int atx,int aty,int size)
 
   if (size > min_size && unpack(1,input)) {
       /* A 1 means we subdivided.. so quadtree */
+      printf("split hera\n");
+      pack(1, (long)1, output);
       read_transformations(atx,aty,size/2);
       read_transformations(atx+size/2,aty,size/2);
       read_transformations(atx,aty+size/2,size/2);
       read_transformations(atx+size/2,aty+size/2,size/2);
   } else {
       /* Read the trasformation */  
+      pack(1, (long)0, output);
       trans->next = (struct t_node *) malloc(sizeof(struct t_node ));
       trans       = trans->next; 
       trans->next = NULL;
-      qalfa       = (int)unpack(N_BITALFA,  input);
-      qbeta       = (int)unpack(N_BITBETA,  input);
+      trans->qalfa       = (int)unpack(N_BITALFA,  input);
+      trans->qbeta       = (int)unpack(N_BITBETA,  input);
       if(isColor){
-        um = (int)unpack(8,input);
-        vm = (int)unpack(8,input);
+        trans->um = (int)unpack(8,input);
+        trans->vm = (int)unpack(8,input);
       }
 
-      /* Compute alfa from the quantized value */
-      alfa = (double) qalfa / (double)(1 << N_BITALFA) * (MAX_ALFA) ;
-      
-      /* Compute beta from the quantized value */
-      beta = (double) qbeta/(double)((1 << N_BITBETA)-1)* ((1.0+fabs(alfa)) * 255);
-      if (alfa > 0.0) beta  -= alfa * 255;
-         
-      trans->alfa = alfa;
-      trans->beta = beta;
-      if(isColor){
-        trans->um = um;
-        trans->vm = vm;
-      }
-      if(qalfa != zeroalfa) {      
+      if(trans->qalfa != zeroalfa) {      
           trans-> sym_op = (int)unpack(3, input);
-          trans->dx = SHIFT * (int)unpack(bits_per_coordinate_h,input);
-          trans->dy = SHIFT * (int)unpack(bits_per_coordinate_w,input);
+          trans->qdx = (int)unpack(bits_per_coordinate_h,input);
+          trans->qdy = (int)unpack(bits_per_coordinate_w,input);
       } else {
-          trans-> sym_op = 0;
-          trans-> dx  = 0;
-          trans-> dy = 0;
+          trans->sym_op = 0;
+          trans->qdx  = 0;
+          trans->qdy = 0;
       }
-      trans->rx = atx;
-      trans->ry = aty;
-      trans->size = size;
-      trans->rrx = atx + size;
-      trans->rry = aty + size;
- 
+      pack(3, (long)trans->sym_op, output);
+      pack(bits_per_coordinate_h, (long)trans->qdx, output);
+      pack(bits_per_coordinate_w, (long)trans->qdy, output);
+      printf("%d %d\n", trans->qdx, trans->qdy);
   }
 }
 
+void write_details(int bit_depth){
+  trans = &fractal_code;
+  int bits, value;
+  while(trans->next){
+    value = 0;
+    bits = 0;
+    trans = trans->next;
+    if(bit_depth < N_BITALFA){
+      value |= trans->qalfa & (1<<(N_BITALFA - bit_depth -1));
+      value <<= 1;
+      bits++;
+    }
+    if(bit_depth < N_BITBETA){
+      value |= trans->qbeta & (1<<(N_BITBETA - bit_depth -1));
+      value <<= 1;        
+      bits++;
+    }
+    if(isColor){
+      if (bit_depth < 8)
+      {
+        value |= trans->um & (1<<(8 - bit_depth -1));
+        value <<= 1;        
+        value |= trans->vm & (1<<(8 - bit_depth -1));
+        value <<= 1;        
+        bits += 2;
+      }
+    }
+    pack(bits, (long)value, output);
+    printf("%d\n", value);
+  }
+}

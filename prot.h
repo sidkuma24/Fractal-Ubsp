@@ -73,7 +73,10 @@ void readimage_pgm(char *,int *,int *);
 void help_enc();
 
 long unpack(int size, FILE *fin);
+void write_details(int bit_depth);
+void read_details(int bit_depth);
 void read_transformations(int atx,int aty,int size);
+void read_initial_transformations(int atx,int aty,int size);
 void writeimage_pgm(char *, PIXEL **, int,int);
 void writeimage_raw(char *, PIXEL **, int,int);
 void writeimage_pipe(FILE *, PIXEL **, int,int);

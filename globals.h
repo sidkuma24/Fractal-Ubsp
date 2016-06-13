@@ -118,6 +118,7 @@ struct t_node {
            short vm;  // for color image: vchannel mean
            short sym_op;
            double alfa, beta;
+           int qdx,qdy,qalfa, qbeta;
            struct t_node *next;
          } ;
 
@@ -205,5 +206,5 @@ EXTERN double **flip_range;
 EXTERN double (*Coding) (int, int, int, int*, int*, int*, int*, int*);
 EXTERN void (*Indexing) (int, int);
 EXTERN int method INIT(= MassCenter);
-EXTERN int isColor INIT(= 1);
+EXTERN int isColor INIT(= 0);
 
