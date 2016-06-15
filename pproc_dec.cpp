@@ -1,39 +1,3 @@
-/******************************************************************************
- ==============================================================================
-
-             '`
-            '--`        Mars -- A quadtree based fractal image
-           '`  '`       coder/decoder. Version 1.0 (10/28/1998) 
-          '--`'--`      Copyright (C) 1998 Mario Polvere 
-         '`      '`     University of Salerno Italy 
-        '--`    '--`    
-       '`  '`  '`  '`
-      '--`'--`'--`'--`
-
-      This program is free software; you can redistribute it and/or modify
-      it under the terms of the GNU General Public License as published by
-      the Free Software Foundation; either version 2 of the License, or
-      (at your option) any later version.
-
-      This program is distributed in the hope that it will be useful,
-      but WITHOUT ANY WARRANTY; without even the implied warranty of
-      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-      GNU General Public License for more details.
-
-      You should have received a copy of the GNU General Public License
-      along with this program; if not, write to the Free Software
-      Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 
-      02111-1307, USA
-
-      The author can be contacted via e-mail:
-                               marpol@iname.com
-                               teimars@erifs1.ericsson.se
-
- ==============================================================================
- ******************************************************************************/
-
-
-
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -49,6 +13,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
+
 
 
 int main(int argc, char **argv)
@@ -79,7 +44,9 @@ int main(int argc, char **argv)
   int_max_alfa   = (int)unpack(8,input);
   isColor        = (int)unpack(1,input);
 
-  printf("done.\n");
+  printf("Minsize: %d\n", min_size);
+
+  printf("header done.\n");
 
   bits_per_coordinate_w = ceil(log(image_width  / SHIFT ) / log(2.0));
   bits_per_coordinate_h = ceil(log(image_height / SHIFT ) / log(2.0));
@@ -99,25 +66,31 @@ int main(int argc, char **argv)
   trans = &fractal_code; 
   printf("Reading initial coordinates ... \n");
   fflush(stdout);
+  
   read_initial_transformations(0,0,virtual_size);
   printf("done.\n");
 
-  printf("Press [Enter] to start reading MSB from file:\n");
-  getchar();
-  printf("Reading MSB ie bit_depth 1 ...\n");
-  // read_details(0);
+  // printf("Press [Enter] to start reading MSB from file:\n");
+  // getchar();
+  // printf("Reading MSB ie bit_depth 1 ...\n");
+  // // read_details(0);
 
+
+  // printf("done.\n");
+  // fflush(stdout);
+
+  // printf(" Original image size: %dx%d\n",image_width,image_height);
+  
+  // image_width  = (int) rint((zoom * image_width));
+  // image_height = (int) rint((zoom * image_height));
+  // printf(" Original image size: %dx%d\n",image_width,image_height);
+
+  // printf("Zoom: %f\n", zoom);
+ 
+  // Close the files
+
+  fclose(input);
   exit(0);
-
-  printf("done.\n");
-  fflush(stdout);
-
-  printf(" Original image size: %dx%d\n",image_width,image_height);
-
-  image_width  = (int) rint((zoom * image_width));
-  image_height = (int) rint((zoom * image_height));
-
-  printf("Zoom: %f\n", zoom);
 
   if(zoom != 1.0) {
     printf(" Zooming image to   : %dx%d\n",image_width,image_height);
@@ -230,7 +203,7 @@ void zooming(double scalefactor)
 
 void read_initial_transformations(int atx,int aty,int size)
 { 
-  int qdy, qdx;
+  long qdy, qdx;
   if(atx >= image_height  || aty >= image_width )
       return;
 
@@ -244,23 +217,30 @@ void read_initial_transformations(int atx,int aty,int size)
 
   if (size > min_size && unpack(1,input)) {
       /* A 1 means we subdivided.. so quadtree */
-      printf("split hera\n");
+      // pack(1, (long)1, tempfile);
+      printf("1\n");
 
       read_initial_transformations(atx,aty,size/2);
       read_initial_transformations(atx+size/2,aty,size/2);
       read_initial_transformations(atx,aty+size/2,size/2);
       read_initial_transformations(atx+size/2,aty+size/2,size/2);
   } else {
-      trans->next = (struct t_node *) malloc(sizeof(struct t_node ));
-      trans       = trans->next; 
-      trans->next = NULL;
-      trans-> sym_op = (int)unpack(3, input);
-      qdx = (int)unpack(bits_per_coordinate_h,input);
-      qdy = (int)unpack(bits_per_coordinate_w,input);
-      trans->dx = SHIFT * qdx;
-      trans->dy = SHIFT * qdy;
+      // pack(1, (long)0, tempfile);
+      printf("0\n");
 
-      printf("%d %d\n", qdx, qdy);
+      // trans->next = (struct t_node *) malloc(sizeof(struct t_node ));
+      // trans       = trans->next; 
+      // trans->next = NULL;
+      // trans->sym_op = (int)unpack(3, input);
+      // qdx = unpack(bits_per_coordinate_h,input);
+      // qdy = unpack(bits_per_coordinate_w,input);
+      // pack(bits_per_coordinate_h, (long)qdx, tempfile);
+      // pack(bits_per_coordinate_w, (long)qdy, tempfile);
+
+      // trans->dx = SHIFT * qdx;
+      // trans->dy = SHIFT * qdy;
+
+      // printf("%ld %ld\n", qdx, qdy);
   }
 }
 

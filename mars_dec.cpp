@@ -219,7 +219,7 @@ void read_transformations(int atx,int aty,int size)
 { 
   int qalfa,qbeta;
   double alfa,beta, um,vm;
-
+  int ddx, ddy;
 
   if(atx >= image_height  || aty >= image_width )
       return;
@@ -265,8 +265,11 @@ void read_transformations(int atx,int aty,int size)
       }
       if(qalfa != zeroalfa) {      
           trans-> sym_op = (int)unpack(3, input);
-          trans->dx = SHIFT * (int)unpack(bits_per_coordinate_h,input);
-          trans->dy = SHIFT * (int)unpack(bits_per_coordinate_w,input);
+          ddx = (int)unpack(bits_per_coordinate_h,input);
+          ddy = (int)unpack(bits_per_coordinate_w,input);
+          trans->dx = SHIFT * ddx;
+          trans->dy = SHIFT * ddy;
+          printf("%d %d\n", ddx, ddy);
       } else {
           trans-> sym_op = 0;
           trans-> dx  = 0;
