@@ -282,6 +282,7 @@ int main(int argc, char **argv)
   printf(" Color              : %s\n\n", isColor?"True":"False");
 
   if(isNonlinear)
+    
     Nonlinear_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
   else
     quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
