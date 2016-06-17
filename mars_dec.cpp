@@ -278,8 +278,8 @@ void read_transformations_nonlinear(int atx,int aty,int size)
       }
 
       /* Compute alfa from the quantized value */
-       alfa1 = (qalfa1 - 15) * 0.0001;
-       alfa2 = (qalfa2 - 15) * 0.0001;
+       alfa1 = (qalfa1 - 15) * 0.1;
+       alfa2 = (qalfa2 - 15) * 0.001;
       
 
       
