@@ -67,6 +67,7 @@
 #define Fisher         3
 #define Hurtgen        4
 #define McSaupe        5 
+#define Nonlinear_Fisher 6
 
 #define TWOPI 6.2831853 
 

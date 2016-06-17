@@ -68,7 +68,8 @@ void help_enc()
   " -c # Num of Saupe features  (16)    -n # Number of MC classes        (50) \n"
   " -A # Num of bits for alfa   (4)     -B # Number of bits for beta     (7)  \n"
   " -y # Max value of alfa      (1.0)   -Q   Output a quadtree image     (Off)\n"
-  " -z # Force alfa to be 0     (0)     -h   Display this help \n\n"
+  " -z # Force alfa to be 0     (0)     -h   Display this help \n"
+  " -FN  Nonlinear Fisher\n\n"
   " Supported image format: raw and pgm\n"
   " Default input file : lena.raw\n"
   " Default output file: lena.ifs\n\n"
@@ -113,7 +114,13 @@ void getopt_enc(int argc, char **argv)
      else {
         if (strlen(argv[i]) == 1) break;
             switch(argv[i][1]) {
-               case 'F': method = Fisher;
+               case 'F': 
+                if((strlen(argv[i]) == 3) && argv[i][2] == 'N') {        
+                         method = Nonlinear_Fisher;
+                         isNonlinear = 1;
+                       }
+                else 
+                         method = Fisher;        
                          break;
                case 'X': method = Hurtgen;
                          break;

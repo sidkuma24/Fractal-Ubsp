@@ -37,6 +37,9 @@
 double HurtgenCoding(int,int,int,int *,int *,int *, int *,int *);
 double SaupeCoding(int,int,int,int *,int *,int *, int *,int *);
 double FisherCoding(int,int,int,int *,int *,int *, int *,int *);
+
+double Nonlinear_FisherCoding(int,int,int,int *,int *,int *, int *,int *, int *);
+
 double Mc_SaupeCoding(int,int,int,int *,int *,int *,int *,int *);
 double MassCenterCoding(int,int,int,int *,int *,int *,int *,int *);
 double Saupe_FisherCoding(int,int,int,int *,int *,int *,int *,int *);
@@ -68,6 +71,7 @@ void newclass(int,double **,int *,int *);
 void getopt_enc(int,char **);
 void getopt_dec(int,char **);
 void quadtree(int ,int,int ,double ,double,double);
+void Nonlinear_quadtree(int ,int,int ,double ,double,double);
 void readimage_raw(char *);
 void readimage_pgm(char *,int *,int *);
 void help_enc();
@@ -77,6 +81,8 @@ void write_details(int bit_depth);
 void read_details(int bit_depth);
 void read_transformations(int atx,int aty,int size);
 void read_initial_transformations(int atx,int aty,int size);
+void read_transformations_nonlinear(int atx,int aty,int size);
+
 void writeimage_pgm(char *, PIXEL **, int,int);
 void writeimage_raw(char *, PIXEL **, int,int);
 void writeimage_pipe(FILE *, PIXEL **, int,int);
@@ -85,6 +91,8 @@ void smooth_image();
 void zooming(double);
 void help_dec();
 void iterative_decoding(int,int,double);
+void iterative_decoding_nonlinear(int,int,double);
 void piramidal_decoding(int);
+void piramidal_decoding_nonlinear(int level);
 
 

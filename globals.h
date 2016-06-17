@@ -94,6 +94,8 @@ struct code_book {
             short isom;
             double sum;
             double sum2;
+            double sum3;
+            double sum4;
          };
 
 struct c {
@@ -101,6 +103,8 @@ struct c {
 	   short ptr_y;
 	   double sum;
 	   double sum2;
+     double sum3;
+     double sum4;
            short iso;
 	   struct c *next;
 	 };
@@ -117,8 +121,8 @@ struct t_node {
            short um;  // for color image: uchannel mean
            short vm;  // for color image: vchannel mean
            short sym_op;
-           double alfa, beta;
-           int qdx,qdy,qalfa, qbeta;
+           double alfa,alfa1,alfa2, beta;
+           int qdx,qdy,qalfa1,qalfa2,qalfa, qbeta;
            struct t_node *next;
          } ;
 
@@ -160,6 +164,12 @@ EXTERN int shrunk_factor_saupe INIT(= 0);
 
 EXTERN int N_BITALFA  INIT(=  4);
 EXTERN int N_BITBETA  INIT(=  7);
+
+/* for nonlinear error checking */
+EXTERN int N_BITALFA1 INIT(=  5);
+EXTERN int N_BITALFA2  INIT(=  5);
+EXTERN int N_BITBETA2 INIT(=  8);
+
 EXTERN double MAX_ALFA  INIT(=  1.0);
 EXTERN int min_size INIT(= 4);
 EXTERN int max_size INIT(= 16);
@@ -204,7 +214,9 @@ EXTERN double **range;
 EXTERN double **range_tmp;
 EXTERN double **flip_range;
 EXTERN double (*Coding) (int, int, int, int*, int*, int*, int*, int*);
+EXTERN double (*Nonlinear_Coding) (int, int, int, int*, int*, int*, int*, int*,int* );
 EXTERN void (*Indexing) (int, int);
 EXTERN int method INIT(= MassCenter);
 EXTERN int isColor INIT(= 0);
+EXTERN int isNonlinear INIT(=0);
 

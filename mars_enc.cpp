@@ -164,6 +164,16 @@ int main(int argc, char **argv)
       Coding = FisherCoding;
       printf(" Speed-up method: Fisher\n\n");
       break;
+    case Nonlinear_Fisher :  
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<24;i++)
+          class_fisher[k][h][i] = NULL;
+
+      Indexing = FisherIndexing;
+      Nonlinear_Coding = Nonlinear_FisherCoding;
+      printf(" Speed-up method: Fisher nonlinear\n\n");
+      break;
     case Hurtgen :  
       for(k=0;k<8;k++)
       for(h=0;h<16;h++)
@@ -241,8 +251,18 @@ int main(int argc, char **argv)
       fatal("\nCan't open output file");
   
   /* Header of output file */
-  pack(4,(long)N_BITALFA,fp);
-  pack(4,(long)N_BITBETA,fp);
+
+  if(isNonlinear){
+    pack(1,(long)1,fp);
+    pack(4,(long)N_BITALFA1,fp);
+    pack(4,(long)N_BITALFA2,fp);
+    pack(4,(long)N_BITBETA2,fp);
+  
+  }else{
+    pack(1,(long)0,fp);
+    pack(4,(long)N_BITALFA,fp);
+    pack(4,(long)N_BITBETA,fp);
+  }
   pack(7,(long)min_size,fp);
   pack(7,(long)max_size,fp);
   pack(6,(long)SHIFT,fp);
@@ -261,7 +281,10 @@ int main(int argc, char **argv)
   printf(" Rms threshold      : %f\n",T_RMS);
   printf(" Color              : %s\n\n", isColor?"True":"False");
 
-  quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
+  if(isNonlinear)
+    Nonlinear_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
+  else
+    quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
 
   pack(-1,(long)0,fp);
   i = pack(-2,(long)0,fp);

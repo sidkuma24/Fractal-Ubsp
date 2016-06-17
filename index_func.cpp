@@ -651,7 +651,7 @@ void FisherIndexing(int size,int s)
   int i,j,k,h;
   int count = 0;
   int iso, clas, var_class;
-  double sum,sum2;
+  double sum,sum2,sum3,sum4;
   double **domi,**flip_domi;
   register double pixel;
   register int x,y;
@@ -671,6 +671,8 @@ void FisherIndexing(int size,int s)
         pixel = contract[x+(i>>1)][y+(j>>1)];
         sum  += pixel;
         sum2 += pixel * pixel;
+        sum3 += pixel * pixel * pixel;
+        sum4 += pixel * pixel * pixel * pixel;
         domi[x][y] = pixel;
       }
                                       /* Compute the symmetry operation which */
@@ -685,6 +687,8 @@ void FisherIndexing(int size,int s)
       node -> ptr_y = j;
       node -> sum   = sum;
       node -> sum2  = sum2;
+      node -> sum3  = sum3;
+      node -> sum4  = sum4;
       node -> iso  = iso;
       node -> next  = class_fisher[s][clas][var_class];
       class_fisher[s][clas][var_class] = node;
