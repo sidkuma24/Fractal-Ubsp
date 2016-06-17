@@ -666,6 +666,8 @@ void FisherIndexing(int size,int s)
       k=0;
       sum  = 0.0;
       sum2 = 0.0;
+      sum3 = 0.0;
+      sum4 = 0.0;
       for(x=0;x< size;x++)
       for(y=0;y< size;y++) {
         pixel = contract[x+(i>>1)][y+(j>>1)];
@@ -692,6 +694,7 @@ void FisherIndexing(int size,int s)
       node -> iso  = iso;
       node -> next  = class_fisher[s][clas][var_class];
       class_fisher[s][clas][var_class] = node;
+      
     }
     printf(" Classification (Fisher) domain (%dx%d)  %d \r",size,size,count) ;
     fflush(stdout);

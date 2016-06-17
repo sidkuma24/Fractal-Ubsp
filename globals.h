@@ -105,7 +105,7 @@ struct c {
 	   double sum2;
      double sum3;
      double sum4;
-           short iso;
+     short iso;
 	   struct c *next;
 	 };
 

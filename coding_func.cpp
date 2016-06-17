@@ -180,7 +180,7 @@ double Saupe_FisherCoding(int atx,int aty,int size,int *xd,
      sum = t2 - 2*alfa*t1 -2*beta*t0 + alfa*alfa*s2 +
                                  2*alfa*beta*s1 + s0*beta*beta;
      dist = sqrt(sum / s0);
-
+   
      if(dist < min ) {
         min = dist;
         *xd = codebook[tip][nlist[ii]].ptr_x;
@@ -225,6 +225,7 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
   double s2 = 0.0;
   double s3 = 0.0;
   double s4 = 0.0;
+  double test_s1 = 0.0;
 
 
   register double pixel;
@@ -241,7 +242,7 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
      *is = IDENTITY;
      return 0.0;
   }
-
+  
   s0 = size * size;
   for(x=0;x < size;x++)
   for(y=0;y < size;y++) {
@@ -252,7 +253,7 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
   }
 
   mean = t0 / s0;
-
+  //printf("size= %d\n",size);
   newclass(size,range,&isom,&clas);
   flips(size,range,flip_range,isom);
   var_class = variance_class(size,flip_range);
@@ -282,13 +283,14 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
         isometry = mapping[isom][pointer->iso];
         comparisons ++ ;
         counter ++ ;
-        s1 = pointer->sum;
+        s1 = pointer->sum ;
         s2 = pointer->sum2;
         s3 = pointer->sum3;
         s4 = pointer->sum4;
       
         t1 = 0.0;
-      
+        t3 = 0.0;
+        test_s1 = 0.0;
         i = pointer->ptr_x >> 1;
         j = pointer->ptr_y >> 1;
    
@@ -297,6 +299,7 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
                  for(x=0;x< size;x++)
                  for(y=0;y< size;y++){
                      t1 += contract[x+i][y+j]*range[x][y];
+                     test_s1 += contract[x+i][y+j];
                      t3 += contract[x+i][y+j]*contract[x+i][y+j]*range[x][y];
                   }
                  break;
@@ -304,6 +307,7 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
                  for(x=0;x< size;x++)
                  for(y=0;y< size;y++){
                      t1 += contract[x+i][y+j]*range[y][size-x-1];
+                     test_s1 += contract[x+i][y+j];
                      t3 += contract[x+i][y+j]*contract[x+i][y+j]*range[y][size-x-1];
                   }
 
@@ -312,6 +316,7 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
                  for(x=0;x< size;x++)
                  for(y=0;y< size;y++){
                      t1 += contract[x+i][y+j]*range[size-y-1][x];
+                     test_s1 += contract[x+i][y+j];
                      t3 += contract[x+i][y+j]*range[size-y-1][x]*contract[x+i][y+j];
                   }
                  break;
@@ -319,6 +324,7 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
                  for(x=0;x< size;x++)
                  for(y=0;y< size;y++){
                     t1 += contract[x+i][y+j]*range[size-x-1][size-y-1];
+                    test_s1 += contract[x+i][y+j];
                     t3 += contract[x+i][y+j]*range[size-x-1][size-y-1]*contract[x+i][y+j];
                   }  
                  break;
@@ -326,6 +332,7 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
                  for(x=0;x< size;x++)
                  for(y=0;y< size;y++){
                      t1 += contract[x+i][y+j]*range[x][size-y-1];
+                     test_s1 += contract[x+i][y+j];
                      t3 += contract[x+i][y+j]*range[x][size-y-1]*contract[x+i][y+j];
                   }
                  break;
@@ -333,6 +340,7 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
                  for(x=0;x< size;x++)
                  for(y=0;y< size;y++){
                      t1 += contract[x+i][y+j]*range[size-x-1][y];
+                     test_s1 += contract[x+i][y+j];
                      t3 += contract[x+i][y+j]*range[size-x-1][y]*contract[x+i][y+j];
                   }
                  break;
@@ -340,6 +348,7 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
                  for(x=0;x< size;x++)
                  for(y=0;y< size;y++){
                      t1 += contract[x+i][y+j]*range[y][x];
+                     test_s1 += contract[x+i][y+j];
                      t3 += contract[x+i][y+j]*range[y][x]*contract[x+i][y+j];
                   }
                  break;
@@ -347,18 +356,14 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
                  for(x=0;x< size;x++)
                  for(y=0;y< size;y++){
                      t1 += contract[x+i][y+j]*range[size-y-1][size-x-1];
+                     test_s1 += contract[x+i][y+j];
                      t3 += contract[x+i][y+j]*range[size-y-1][size-x-1]*contract[x+i][y+j];
                   }
                  break;
         }
 
         /* Compute the scalig factor */
-        // det = s2*s0 - s1*s1;
-        // if(det == 0.0)
-        //    alfa = 0.0;
-        // else
-        //   alfa = (s0*t1 - s1*t0) / det;
-        // if(alfa < 0.0 ) alfa = 0.0;
+      
         double Z = t0/s0;
         double z = s1/s0;
         double z2 = s2/s0;
@@ -368,113 +373,95 @@ double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
         double Zz2 = t3/s0;
         int flag1 = 0, flag2 = 0;
         
-        det1 = ((z2*z) - z3) * ((z2*z) - z3) - ((z*z) - z2) * ((z2 * z2) - (z*z*z*z)) ;
+        det1 = (((z2*z) - z3) * ((z2*z) - z3)) - (((z*z) - z2) * ((z2 * z2) - (z*z*z*z))) ;
         
         if(det1 == 0.0)
           alfa1 = 0.0;
         else
           alfa1 = ((Zz - Z*z) * (z2 * z2 - z4) - (Zz2 - z2*Z)*(z2*z - z3))/det1;
-        //  printf("Alfa1 = %f\n",alfa1);
-        if(alfa1 < 0.0){
-          alfa1 = 0.0;
-        }
+        if(alfa1 < 0.0) alfa1 = 0.0;
+        
+      // printf("alfa1 = %f\n",alfa1);
 
         det2 = z2 * z - z3; 
-        printf("det2 = %f\n",det2);
+       // printf("det2 = %f\n",det2);
         if(det2 == 0.0)
           alfa2 = 0.0;
         else
-          alfa2 = -(((Zz - Z*z) + alfa1*(z*z - z2))*1000)/det2 ;
-        if(alfa2 < 0.0){
-          alfa2 = 0.0;
-        }
-        // printf("alfa 1 = %f\n",alfa1);
-        // printf("alfa 2 = %f\n",alfa2);
-
+          alfa2 = -(((Zz - Z*z) + alfa1*(z*z - z2)))/det2 ;
+        if(alfa2 < 0.0) alfa2 = 0.0;
+         //printf("alfa2 = %f\n",alfa2);
+       
       //  printf("Det1= %f\n",det1);
-        printf("Alfa1 = %f\n",alfa1);
+     //  printf("Alfa1 = %f\n",alfa1);
         
-        printf("Alfa2 = %f\n",alfa2);
+      //  printf("Alfa2 = %f\n\n",alfa2);
 
         /* Quantize the scalig factors */
-        // if(flag1){
-        //   qalfa1 |= 240;
-        //   qalfa1 |= quan(alfa1/0.1) + 15;
-        // }else{
-        //   qalfa1 = quan(alfa1/0.1) + 15;
-        // }
+        qalfa1 = quan(alfa1/0.0001) + 15;
+    
 
-       qalfa1 = 0.5 + (alfa1 )/( MAX_ALFA)* (1 << N_BITALFA1);
-       if(qalfa1 < 0)  qalfa1 = 0;
-       if(qalfa1 >= (1 << N_BITALFA1))  qalfa1 = (1 << N_BITALFA1) - 1;
+       // qalfa1 = 0.5 + (alfa1 )/( MAX_ALFA)* (1 << N_BITALFA1);
+       // if(qalfa1 < 0)  qalfa1 = 0;
+       // if(qalfa1 >= (1 << N_BITALFA1))  qalfa1 = (1 << N_BITALFA1) - 1;
 
      /* Compute the scalig factor back from the quantized value*/
-       alfa1 = (double) qalfa1 / (double)(1 << N_BITALFA1) * ( MAX_ALFA) ;
+       // alfa1 = (double) qalfa1 / (double)(1 << N_BITALFA1) * ( MAX_ALFA) ;
 
 
-       qalfa2 = 0.5 + (alfa2 )/( MAX_ALFA)* (1 << N_BITALFA2);
-       if(qalfa1 < 0)  qalfa1 = 0;
-       if(qalfa1 >= (1 << N_BITALFA1))  qalfa1 = (1 << N_BITALFA2) - 1;
+     //   qalfa2 = 0.5 + (alfa2 )/( MAX_ALFA)* (1 << N_BITALFA2);
+     //   if(qalfa1 < 0)  qalfa1 = 0;
+     //   if(qalfa1 >= (1 << N_BITALFA1))  qalfa1 = (1 << N_BITALFA2) - 1;
 
-     /* Compute the scalig factor back from the quantized value*/
-       alfa2 = (double) qalfa2 / (double)(1 << N_BITALFA2) * ( MAX_ALFA) ;
+     // /* Compute the scalig factor back from the quantized value*/
+     //   alfa2 = (double) qalfa2 / (double)(1 << N_BITALFA2) * ( MAX_ALFA) ;
        
-        // if(flag2){
-        //   qalfa2 |= 240;
-        //   qalfa2 |= quan(alfa2/0.001) + 15;
-        // }else{
-        //   qalfa2 = quan(alfa2/0.001) + 15;
-        // }
+          qalfa2 = quan(alfa2/0.0001) + 15;
+        
        
         /* Compute the scalig factor back from the quantized value*/
-        // alfa1 = (qalfa1 - 15) * 0.1;
-        // alfa2 = (qalfa2 - 15) * 0.001;
+        alfa1 = (qalfa1 - 15) * 0.0001;
+        alfa2 = (qalfa2 - 15) * 0.0001;
         
-         printf("Alfa1 = %f\n",alfa1);
+        // printf("Alfa1 = %f\n",alfa1);
         
-        printf("Alfa2 = %f\n\n\n",alfa2);
+     //   printf("Alfa2 = %f\n",alfa2);
                
 
         /* Compute the offset */
         // beta= (t0 - alfa*s1) / s0;
         // if (alfa > 0.0)  beta += alfa * 255;
-        // int flag_beta = 0;
-        beta = Z - alfa1 * z - alfa2 * z2;
-        //if(beta <= -128.5 || beta >= 126.5 ){
-        //   flag_beta = 1;
-        //   int sign = beta > 0 ? 1 : -1;
-        //   beta = sign * (abs(beta) - 1.5); 
-        // }
-
+        int flag_beta = 0;
+        beta = Z - (alfa1 * z) - (alfa2 * z2);
+        if(beta <0.0 ) beta = 0.0;
+       
+      //  printf("beta: %f\n",beta);
         /* Quantize the offset */
-        // if(flag_beta){
-        //   qbeta |= 255;
-        //   qbeta |= quan(beta) + 128;
-        // }else{
-        //    qbeta = quan(beta) + 128;
-        // }
+           qbeta = quan(beta) + 128;
+             
     
         /* Compute the offset back from the quantized value*/
-   //     beta = (qbeta - 128);
-        qbeta = 0.5 + beta/ ((1.0+fabs(alfa1))*255)*((1 << N_BITBETA2)-1);
-     if (qbeta< 0) qbeta = 0;
-     if (qbeta >= 1 << N_BITBETA2) qbeta = (1 << N_BITBETA2)-1;
+       beta = (qbeta - 128);
+       //printf("beta = %f\n\n\n",beta);
+     //    qbeta = 0.5 + beta/ ((1.0+fabs(alfa1))*255)*((1 << N_BITBETA2)-1);
+     // if (qbeta< 0) qbeta = 0;
+     // if (qbeta >= 1 << N_BITBETA2) qbeta = (1 << N_BITBETA2)-1;
 
      /* Compute the offset back from the quantized value*/
-     beta = (double)qbeta/(double)((1 << N_BITBETA2)-1)*((1.0+fabs(alfa1))*255);
-     if (alfa1 > 0.0) beta  -= alfa1 * 255;
+     // beta = (double)qbeta/(double)((1 << N_BITBETA2)-1)*((1.0+fabs(alfa1))*255);
+     // if (alfa1 > 0.0) beta  -= alfa1 * 255;
     
 
         /* Compute the rms distance */
         // sum = t2 - 2*alfa*t1 -2*beta*t0 + alfa*alfa*s2 +
         //                       2*alfa*beta*s1 + s0*beta*beta;
 
-        sum = (t2 + alfa2 * s2) + (alfa2 *alfa2 * s2) + (beta *beta) - (alfa1 * beta * s1) 
+        sum = (t2 + alfa1 * alfa1 *s2) + (alfa2 *alfa2 * s2) + (beta *beta)  
                     - 2 * ((alfa1 * t1) - (alfa2 * beta * s1) + (alfa2 * t3) + (beta * s1) - (alfa1 * alfa2 * s3) - (beta * alfa1 * s1));
         dist = sqrt(sum / s0);
         
        //
-        
+        printf("%f \t %f \t %f\t %f\n",alfa1,alfa2,beta,dist);
         if(dist < min ) {
             min = dist;
             *xd = pointer->ptr_x;
@@ -509,7 +496,7 @@ double FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
   double s2 = 0.0;
   register double pixel;
   struct c *pointer;
-
+  double alfa_min =0.0, beta_min=0.0, error_min = 0.0;
   tip = (int) rint((log((double) size)/log (2.0)));
 
   if(tip == 0) {   /* size = 1 */
@@ -627,6 +614,7 @@ double FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
         /* Compute the scalig factor back from the quantized value*/
         alfa = (double) qalfa / (double)(1 << N_BITALFA) * ( MAX_ALFA) ;
 //       printf("alfa = %f\n",alfa);
+        //printf("dquant alfa = %f\n",alfa);
 
         /* Compute the offset */
         beta= (t0 - alfa*s1) / s0;
@@ -645,9 +633,12 @@ double FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
         sum = t2 - 2*alfa*t1 -2*beta*t0 + alfa*alfa*s2 +
                               2*alfa*beta*s1 + s0*beta*beta;
         dist = sqrt(sum / s0);
-
+         
         if(dist < min ) {
             min = dist;
+            error_min = dist;
+            alfa_min = alfa;
+            beta_min = beta;
             *xd = pointer->ptr_x;
             *yd = pointer->ptr_y;
             *is = isometry;
@@ -657,6 +648,8 @@ double FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
         pointer = pointer -> next;
      }
   }
+
+printf("%f \t %f \t %f",alfa_min,beta_min,error_min);
  return (min) ;
 }
 
