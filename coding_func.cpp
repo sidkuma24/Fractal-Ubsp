@@ -388,12 +388,12 @@ double LumInv_FisherCoding2(int atx,int aty,int size,int *xd,int *yd,int *is,
 double LumInv_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
                                                        int* qalf,int* qrmea)
 {
-  int x,y,qalfa ,qrmean,i,j;
+  int x,y,qalfa ,qrmean,i,j,qbeta;
   int tip,counter,isometry ;
   int isom,clas, var_class;
   int start_first, end_first, fisher_first;
   int start_second, end_second,fisher_second;
-  double dist,alfa;
+  double dist,alfa, rmean_min, rmean,beta;
   double min = 1000000000.0;
   double sum,s0;
   double mean,det;
@@ -524,10 +524,12 @@ double LumInv_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
           // zero_alfa_count++;
         // printf("deq alfa = %f\n",alfa);
         /*quantize the range mean */
+       
+        rmean = mean;
         qrmean = quan(mean);
-         mean =  (double)qrmean;
-      
 
+
+        rmean = (double)qrmean;
         /* Quantize the offset */
        
        
@@ -544,7 +546,17 @@ double LumInv_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
         // if (qbeta >= 1 << N_BITBETA) qbeta = (1 << N_BITBETA)-1;
 
    
-       double beta= (t0 - alfa*s1) / s0;
+        beta= (t0 - alfa*s1) / s0;
+        if (alfa > 0.0)  beta += alfa * 255;
+
+        /* Quantize the offset */
+        qbeta = 0.5 + beta/ ((1.0+fabs(alfa))*255)*((1<< N_BITBETA)-1);
+        if (qbeta< 0) qbeta = 0;
+        if (qbeta >= 1 << N_BITBETA) qbeta = (1 << N_BITBETA)-1;
+
+        /* Compute the offset back from the quantized value*/
+        beta = (double)qbeta/(double)((1 << N_BITBETA)-1)*((1.0+fabs(alfa))*255);
+        if (alfa > 0.0) beta  -= alfa * 255;
         /* Compute the rms distance */
         sum = t2 - 2*alfa*t1 -2*beta*t0 + alfa*alfa*s2 +
                               2*alfa*beta*s1 + s0*beta*beta;
@@ -553,7 +565,9 @@ double LumInv_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
         if(dist < min ) {
             min = dist;
             error_min = dist;
-            
+          
+            alfa_min = alfa;
+            rmean_min = rmean;
             *xd = pointer->ptr_x;
             *yd = pointer->ptr_y;
             *is = isometry;
@@ -564,7 +578,7 @@ double LumInv_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
      }
   }
 
-//printf("%f \t %f \t %f\n",alfa_min,beta_min,error_min);
+printf("%f \t %f \t %f\n",alfa_min,rmean_min,error_min);
   // printf("zero alfa count = %d\n",zero_alfa_count);
  return (min) ;
 }
@@ -987,11 +1001,13 @@ double FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
             *qbet = qbeta;
         }
         pointer = pointer -> next;
+// printf("%f \t %f \t %f\n",alfa_min,beta_min,error_min);
+
      }
   }
 
-// printf("%f \t %f \t %f\n",alfa_min,beta_min,error_min);
-  printf("Zero alfa count = %d\n",zero_alfa_count);
+printf("%f \t %f \t %f\n",alfa_min,beta_min,error_min);
+  // printf("Zero alfa count = %d\n",zero_alfa_count);
  return (min) ;
 }
 
