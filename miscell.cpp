@@ -69,7 +69,7 @@ void help_enc()
   " -A # Num of bits for alfa   (4)     -B # Number of bits for beta     (7)  \n"
   " -y # Max value of alfa      (1.0)   -Q   Output a quadtree image     (Off)\n"
   " -z # Force alfa to be 0     (0)     -h   Display this help \n"
-  " -FN  Nonlinear Fisher\n\n"
+  " -FN  Nonlinear Fisher               -FL Luminence Invarient Fisher     \n\n"
   " Supported image format: raw and pgm\n"
   " Default input file : lena.raw\n"
   " Default output file: lena.ifs\n\n"
@@ -118,8 +118,13 @@ void getopt_enc(int argc, char **argv)
                 if((strlen(argv[i]) == 3) && argv[i][2] == 'N') {        
                          method = Nonlinear_Fisher;
                          isNonlinear = 1;
-                       }
-                else 
+                         break;
+                }
+                else if((strlen(argv[i]) == 3) && (argv[i][2] == 'L')){
+                         method = LumInv_Fisher;
+                         isLumInv = 1;
+                         break; 
+                }
                          method = Fisher;        
                          break;
                case 'X': method = Hurtgen;

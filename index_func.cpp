@@ -659,6 +659,7 @@ void FisherIndexing(int size,int s)
 
   matrix_allocate(domi,size,size,double)
   matrix_allocate(flip_domi,size,size,double)
+  int class_count[24] = {0};
 
   for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
     for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
@@ -694,6 +695,7 @@ void FisherIndexing(int size,int s)
       node -> iso  = iso;
       node -> next  = class_fisher[s][clas][var_class];
       class_fisher[s][clas][var_class] = node;
+      class_count[var_class]++;
       
     }
     printf(" Classification (Fisher) domain (%dx%d)  %d \r",size,size,count) ;
@@ -716,6 +718,9 @@ void FisherIndexing(int size,int s)
 
 
   printf("\n");
+  // for(int i = 0; i < 24; i++){
+  //   printf("Class %d count = %d\n",i,class_count[i]);
+  // }
 
   free(domi[0]);
   free(flip_domi[0]);

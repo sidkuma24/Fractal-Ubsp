@@ -68,6 +68,8 @@
 #define Hurtgen        4
 #define McSaupe        5 
 #define Nonlinear_Fisher 6
+#define LumInv_Fisher 7
+
 
 #define TWOPI 6.2831853 
 

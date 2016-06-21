@@ -205,6 +205,370 @@ int quan(double val)
   return result;
 }
 
+double LumInv_FisherCoding2(int atx,int aty,int size,int *xd,int *yd,int *is,
+                                                       int* qalf,int *qbet)
+{
+  int x,y,qalfa ,qbeta,i,j;
+  int tip,counter,isometry ;
+  int isom,clas, var_class;
+  int start_first, end_first, fisher_first;
+  int start_second, end_second,fisher_second;
+  double dist,alfa,beta;
+  double min = 1000000000.0;
+  double sum,s0;
+  double mean,det;
+  double t0 = 0.0;
+  double t1 = 0.0;
+  double t2 = 0.0;
+  double s1 = 0.0;
+  double s2 = 0.0;
+  register double pixel;
+  struct c *pointer;
+  double alfa_min =0.0, beta_min=0.0, error_min = 0.0;
+  tip = (int) rint((log((double) size)/log (2.0)));
+
+  if(tip == 0) {   /* size = 1 */
+     *qbet = (int)image[atx][aty];
+     *qalf = zeroalfa;
+     *xd = 0;
+     *yd = 0;
+     *is = IDENTITY;
+     return 0.0;
+  }
+
+  s0 = size * size;
+  for(x=0;x < size;x++)
+  for(y=0;y < size;y++) {
+     pixel = (double)image[atx+x][aty+y];
+     t0 +=  pixel;
+     t2 +=  pixel * pixel;
+     range[x][y] = pixel;
+  }
+
+  mean = t0 / s0;
+
+  newclass(size,range,&isom,&clas);
+  flips(size,range,flip_range,isom);
+  var_class = variance_class(size,flip_range);
+
+  if (full_first_class) {
+      start_first = 0;
+      end_first   = 3;
+  }
+  else { 
+      start_first = clas;
+      end_first   = clas + 1;
+  } 
+
+  if (full_second_class) {
+      start_second = 0;
+      end_second   = 24; 
+  }
+  else { 
+      start_second = var_class;
+      end_second   = var_class + 1;
+  } 
+
+  for(fisher_first = start_first; fisher_first < end_first; fisher_first ++) 
+  for(fisher_second=start_second; fisher_second < end_second; fisher_second++) { 
+     pointer = class_fisher[tip][fisher_first][fisher_second]; 
+     while(pointer != NULL) {
+        isometry = mapping[isom][pointer->iso];
+        comparisons ++ ;
+        counter ++ ;
+        s1 = pointer->sum;
+        s2 = pointer->sum2;
+       
+        t1 = 0.0;
+        i = pointer->ptr_x >> 1;
+        j = pointer->ptr_y >> 1;
+   
+        switch(isometry) { 
+         case IDENTITY   :  
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[x][y];
+                 break;
+         case R_ROTATE90 :  
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[y][size-x-1];
+                 break;
+         case L_ROTATE90 :  
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[size-y-1][x];
+                 break;
+         case ROTATE180  :  
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[size-x-1][size-y-1];
+                 break;
+         case R_VERTICAL :  
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[x][size-y-1];
+                 break;
+         case R_HORIZONTAL: 
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[size-x-1][y];
+                 break;
+         case F_DIAGONAL:   
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[y][x];
+                 break;
+         case S_DIAGONAL:   
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[size-y-1][size-x-1];
+                 break;
+        }
+
+        /* Compute the scalig factor */
+        det = s2*s0 - s1*s1;
+        if(det == 0.0)
+           alfa = 0.0;
+        else
+          alfa = (s0*t1 - s1*t0)  / det;
+        if(alfa < 0.0 ) alfa = 0.0;
+         // printf("before quantization alfa = %f\n",alfa);
+        /* Quantize the scalig factor */
+        // qalfa = 0.5 + (alfa )/( MAX_ALFA)* (1 << N_BITALFA);
+        qalfa =  0.5 +(alfa )/( MAX_ALFA)* (1 << N_BITALFA);
+        if(qalfa < 0)  qalfa = 0;
+        if(qalfa >= (1 << N_BITALFA))  qalfa = (1 << N_BITALFA) - 1;
+
+        /* Compute the scalig factor back from the quantized value*/
+        alfa = (double) qalfa / (double)(1 << N_BITALFA) * ( MAX_ALFA) ;
+//      
+        if(alfa == 0)
+          zero_alfa_count++;
+        // printf("after deqauantization alfa = %f\n\n",alfa);
+
+        /* Compute the offset */
+        beta= (t0 - alfa*s1) / s0;
+        if (alfa > 0.0)  beta += alfa * 255;
+
+        /* Quantize the offset */
+        qbeta = 0.5 + beta/ ((1.0+fabs(alfa))*255)*((1<< N_BITBETA)-1);
+        if (qbeta< 0) qbeta = 0;
+        if (qbeta >= 1 << N_BITBETA) qbeta = (1 << N_BITBETA)-1;
+
+        /* Compute the offset back from the quantized value*/
+        beta = (double)qbeta/(double)((1 << N_BITBETA)-1)*((1.0+fabs(alfa))*255);
+        if (alfa > 0.0) beta  -= alfa * 255;
+
+        /* Compute the rms distance */
+        sum = t2 - 2*alfa*t1 -2*beta*t0 + alfa*alfa*s2 +
+                              2*alfa*beta*s1 + s0*beta*beta;
+        dist = sqrt(sum / s0);
+         
+        if(dist < min ) {
+            min = dist;
+            error_min = dist;
+            alfa_min = alfa;
+            beta_min = beta;
+            *xd = pointer->ptr_x;
+            *yd = pointer->ptr_y;
+            *is = isometry;
+            *qalf = qalfa;
+            *qbet = qbeta;
+        }
+        pointer = pointer -> next;
+     }
+  }
+
+// printf("%f \t %f \t %f\n",alfa_min,beta_min,error_min);
+  printf("Zero alfa count = %d\n",zero_alfa_count);
+ return (min) ;
+}
+
+double LumInv_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
+                                                       int* qalf,int* qrmea)
+{
+  int x,y,qalfa ,qrmean,i,j;
+  int tip,counter,isometry ;
+  int isom,clas, var_class;
+  int start_first, end_first, fisher_first;
+  int start_second, end_second,fisher_second;
+  double dist,alfa;
+  double min = 1000000000.0;
+  double sum,s0;
+  double mean,det;
+  double t0 = 0.0;
+  double t1 = 0.0;
+  double t2 = 0.0;
+  double s1 = 0.0;
+  double s2 = 0.0;
+  register double pixel;
+  struct c *pointer;
+  double alfa_min =0.0, beta_min=0.0, error_min = 0.0;
+  tip = (int) rint((log((double) size)/log (2.0)));
+
+  if(tip == 0) {   /* size = 1 */
+     *qrmea = (int)image[atx][aty];
+     *qalf = zeroalfa;
+     *xd = 0;
+     *yd = 0;
+     *is = IDENTITY;
+     return 0.0;
+  }
+
+  s0 = size * size;
+  for(x=0;x < size;x++)
+  for(y=0;y < size;y++) {
+     pixel = (double)image[atx+x][aty+y];
+     t0 +=  pixel;
+     t2 +=  pixel * pixel;
+     range[x][y] = pixel;
+  }
+
+  mean = t0 / s0;
+
+  newclass(size,range,&isom,&clas);
+  flips(size,range,flip_range,isom);
+  var_class = variance_class(size,flip_range);
+
+  if (full_first_class) {
+      start_first = 0;
+      end_first   = 3;
+  }
+  else { 
+      start_first = clas;
+      end_first   = clas + 1;
+  } 
+
+  if (full_second_class) {
+      start_second = 0;
+      end_second   = 24; 
+  }
+  else { 
+      start_second = var_class;
+      end_second   = var_class + 1;
+  } 
+
+  for(fisher_first = start_first; fisher_first < end_first; fisher_first ++) 
+  for(fisher_second=start_second; fisher_second < end_second; fisher_second++) { 
+     pointer = class_fisher[tip][fisher_first][fisher_second]; 
+     while(pointer != NULL) {
+        isometry = mapping[isom][pointer->iso];
+        comparisons ++ ;
+        counter ++ ;
+        s1 = pointer->sum;
+        s2 = pointer->sum2;
+       
+        t1 = 0.0;
+        i = pointer->ptr_x >> 1;
+        j = pointer->ptr_y >> 1;
+   
+        switch(isometry) { 
+         case IDENTITY   :  
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[x][y];
+                 break;
+         case R_ROTATE90 :  
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[y][size-x-1];
+                 break;
+         case L_ROTATE90 :  
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[size-y-1][x];
+                 break;
+         case ROTATE180  :  
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[size-x-1][size-y-1];
+                 break;
+         case R_VERTICAL :  
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[x][size-y-1];
+                 break;
+         case R_HORIZONTAL: 
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[size-x-1][y];
+                 break;
+         case F_DIAGONAL:   
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[y][x];
+                 break;
+         case S_DIAGONAL:   
+                 for(x=0;x< size;x++)
+                 for(y=0;y< size;y++)
+                     t1 += contract[x+i][y+j]*range[size-y-1][size-x-1];
+                 break;
+        }
+
+        /* Compute the scalig factor */
+        det = s2*s0 - s1*s1;
+        if(det == 0.0)
+           alfa = 0.0;
+        else
+          alfa = (s0*t1 - s1*t0) / det;
+        if(alfa < 0.0 ) alfa = 0.0;
+       
+        qalfa =  0.5 +(alfa )/( MAX_ALFA)* (1 << N_BITALFA);
+        if(qalfa < 0)  qalfa = 0;
+        if(qalfa >= (1 << N_BITALFA))  qalfa = (1 << N_BITALFA) - 1;
+
+        /* Compute the scalig factor back from the quantized value*/
+        alfa = (double) qalfa / (double)(1 << N_BITALFA) * ( MAX_ALFA) ;
+        // if(alfa == 0)
+          // zero_alfa_count++;
+        // printf("deq alfa = %f\n",alfa);
+        /*quantize the range mean */
+        qrmean = quan(mean);
+         mean =  (double)qrmean;
+      
+
+        /* Quantize the offset */
+       
+       
+        /* Compute the offset back from the quantized value*/
+       
+        //printf("deq mean = %f\n",mean);
+        // /* Compute the offset */
+        // beta= (t0 - alfa*s1) / s0;
+        // if (alfa > 0.0)  beta += alfa * 255;
+
+        // /* Quantize the offset */
+        // qbeta = 0.5 + beta/ ((1.0+fabs(alfa))*255)*((1<< N_BITBETA)-1);
+        // if (qbeta< 0) qbeta = 0;
+        // if (qbeta >= 1 << N_BITBETA) qbeta = (1 << N_BITBETA)-1;
+
+   
+       double beta= (t0 - alfa*s1) / s0;
+        /* Compute the rms distance */
+        sum = t2 - 2*alfa*t1 -2*beta*t0 + alfa*alfa*s2 +
+                              2*alfa*beta*s1 + s0*beta*beta;
+        dist = sqrt(sum / s0);
+         
+        if(dist < min ) {
+            min = dist;
+            error_min = dist;
+            
+            *xd = pointer->ptr_x;
+            *yd = pointer->ptr_y;
+            *is = isometry;
+            *qalf = qalfa;
+            *qrmea = qrmean;
+        }
+        pointer = pointer -> next;
+     }
+  }
+
+//printf("%f \t %f \t %f\n",alfa_min,beta_min,error_min);
+  // printf("zero alfa count = %d\n",zero_alfa_count);
+ return (min) ;
+}
+
 double Nonlinear_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
                                                        int* qalf1,int* qalf2,int *qbet)
 {
@@ -378,87 +742,55 @@ double alfa1_min =0.0, beta_min=0.0, error_min = 0.0,alfa2_min = 0.0;
         if(det1 == 0.0)
           alfa1 = 0.0;
         else
-          alfa1 = ((rd - r*d) * (d2 * d2 - d4) - (rd2 - d2*r)*(d2*d - d3))/det1;
-        if(alfa1 < 0.0) alfa1 = 0.0;
-        alfa1  = alfa1 * 100;
-        
-       //printf("alfa1 = %f\n",alfa1);
+          alfa1 = 1000*((rd - r*d) * (d2 * d2 - d4) - (rd2 - d2*r)*(d2*d - d3))/det1;
+        if(alfa1 < -1.55 || alfa1 > 1.55){
+          flag1 = 1;
+          int sign = alfa1 > 0 ? 1 : -1;
+          alfa1 = sign * (abs(alfa1) - 1.5);
+        } 
+        // printf("alfa1 = %f\n",alfa1);
 
+        qalfa1 = 0.5 + (alfa1 )/( MAX_ALFA1)* (1 << N_BITALFA1);
+        if(qalfa1 < 0)  qalfa1 = 0;
+        if(qalfa1 >= (1 << N_BITALFA1))  qalfa1 = (1 << N_BITALFA1) - 1;
+        if(flag1) qalfa1 |= 30;
+
+        alfa1 = (double) qalfa1 / (double)(1 << N_BITALFA1) * (MAX_ALFA1) ;
+        // printf("deq alfa1 = %f\n\n",alfa1);
+        
+          
         det2 = d4 - (d2 * d2);
-       // printf("det2 = %f\n",det2);
+       
         if(det2 == 0.0)
           alfa2 = 0.0;
         else
-          alfa2 = (rd2 - r*d2 + alfa1*(d*d2 - d3))/det2 ;
-        if(alfa2 < 0.0) alfa2 = 0.0;
-        // printf("alfa2 = %f\n\n",alfa2);
+          alfa2 = ((rd2 - r*d2) + alfa1*(d*d2 - d3))/det2 ;
+        if(alfa2 < 0.0) alfa2  = 0.0;
        
-      //  printf("Det1= %f\n",det1);
-     //  printf("Alfa1 = %f\n",alfa1);
+         qalfa2 = 0.5 + (alfa2 )/( MAX_ALFA2)* (1 << N_BITALFA2);
+         if(qalfa2 < 0)  qalfa2 = 0;
+         if(qalfa2 >= (1 << N_BITALFA2))  qalfa2 = (1 << N_BITALFA2) - 1;
+
         
-      //  printf("Alfa2 = %f\n\n",alfa2);
-
-        /* Quantize the scalig factors */
-        qalfa1 = quan(alfa1/0.1) + 15;
-    
-
-       // qalfa1 = 0.5 + (alfa1 )/( MAX_ALFA)* (1 << N_BITALFA1);
-       // if(qalfa1 < 0)  qalfa1 = 0;
-       // if(qalfa1 >= (1 << N_BITALFA1))  qalfa1 = (1 << N_BITALFA1) - 1;
-
-     /* Compute the scalig factor back from the quantized value*/
-       // alfa1 = (double) qalfa1 / (double)(1 << N_BITALFA1) * ( MAX_ALFA) ;
-
-
-     //   qalfa2 = 0.5 + (alfa2 )/( MAX_ALFA)* (1 << N_BITALFA2);
-     //   if(qalfa1 < 0)  qalfa1 = 0;
-     //   if(qalfa1 >= (1 << N_BITALFA1))  qalfa1 = (1 << N_BITALFA2) - 1;
-
-     // /* Compute the scalig factor back from the quantized value*/
-     //   alfa2 = (double) qalfa2 / (double)(1 << N_BITALFA2) * ( MAX_ALFA) ;
-       
-          qalfa2 = quan(alfa2/0.001) + 15;
+        alfa2 = (double) qalfa2 / (double)(1 << N_BITALFA2) * ( MAX_ALFA2) ;
         
-       
-        /* Compute the scalig factor back from the quantized value*/
-        alfa1 = (qalfa1 - 15) * 0.1;
-        alfa2 = (qalfa2 - 15) * 0.001;
-        
-        // printf("Alfa1 = %f\n",alfa1);
-        
-        // printf("Alfa2 = %f\n",alfa2);
-               
-
-        /* Compute the offset */
-        // beta= (t0 - alfa*s1) / s0;
-        // if (alfa > 0.0)  beta += alfa * 255;
         int flag_beta = 0;
         beta = r - (alfa1 * d) - (alfa2 * d2);
         if(beta <0.0 ) beta = 0.0;
+        if (alfa1 > 0.0)  beta += alfa1 * 255 ;
        
-      //  printf("beta: %f\n",beta);
-        /* Quantize the offset */
-           qbeta = quan(beta) + 128;
-             
-    
-        /* Compute the offset back from the quantized value*/
-       beta = (qbeta - 128);
-        // printf("beta = %f\n\n\n",beta);
-     //    qbeta = 0.5 + beta/ ((1.0+fabs(alfa1))*255)*((1 << N_BITBETA2)-1);
-     // if (qbeta< 0) qbeta = 0;
-     // if (qbeta >= 1 << N_BITBETA2) qbeta = (1 << N_BITBETA2)-1;
-
-     /* Compute the offset back from the quantized value*/
-     // beta = (double)qbeta/(double)((1 << N_BITBETA2)-1)*((1.0+fabs(alfa1))*255);
-     // if (alfa1 > 0.0) beta  -= alfa1 * 255;
+      
+        qbeta = 0.5 + beta/ ((1.0+fabs(alfa1))*255)*((1<< N_BITBETA2)-1);
+        if (qbeta< 0) qbeta = 0;
+        if (qbeta >= 1 << N_BITBETA2) qbeta = (1 << N_BITBETA2)-1;
     
 
-        /* Compute the rms distance */
-        // sum = t2 - 2*alfa*t1 -2*beta*t0 + alfa*alfa*s2 +
-        //                       2*alfa*beta*s1 + s0*beta*beta;
+        beta = (double)qbeta/(double)((1 << N_BITBETA2)-1)*((1.0+fabs(alfa1))*255);
+        if (alfa1 > 0.0) beta  -= alfa1 * 255;
 
-       sum = (t2 + alfa1 * alfa1 *s2) + (alfa2 *alfa2 * s2) + (beta *beta)  
-                   - 2 * ((alfa1 * t1) - (alfa2 * beta * s1) + (alfa2 * t3) + (beta * s1) - (alfa1 * alfa2 * s3) - (beta * alfa1 * s1));
+
+       sum = (t2 + alfa1 * alfa1 *s2) + (alfa2 *alfa2 * s4) + (beta *beta)  
+                   - 2 * ((beta * t1) - (alfa2 * beta * s2) + (alfa2 * t1) + (beta * s1) - (alfa1 * alfa2 * s3) + (beta * alfa1 * s1));
        dist = sqrt(sum / s0);
         
        //
@@ -479,6 +811,7 @@ double alfa1_min =0.0, beta_min=0.0, error_min = 0.0,alfa2_min = 0.0;
      }
   }
  // printf("%f \t %f \t %f \t %f\n",alfa1_min,alfa2_min,beta_min,error_min);
+ // printf("error: %f\n",error_min);
  return (min) ;
 }
 
@@ -608,25 +941,28 @@ double FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
         if(det == 0.0)
            alfa = 0.0;
         else
-          alfa = (s0*t1 - s1*t0) / det;
+          alfa = (s0*t1 - s1*t0)  / det;
         if(alfa < 0.0 ) alfa = 0.0;
-     //   printf("before alfa = %f\n",alfa);
+         // printf("before quantization alfa = %f\n",alfa);
         /* Quantize the scalig factor */
-        qalfa = 0.5 + (alfa )/( MAX_ALFA)* (1 << N_BITALFA);
+        // qalfa = 0.5 + (alfa )/( MAX_ALFA)* (1 << N_BITALFA);
+        qalfa =  0.5 +(alfa )/( MAX_ALFA)* (1 << N_BITALFA);
         if(qalfa < 0)  qalfa = 0;
         if(qalfa >= (1 << N_BITALFA))  qalfa = (1 << N_BITALFA) - 1;
 
         /* Compute the scalig factor back from the quantized value*/
         alfa = (double) qalfa / (double)(1 << N_BITALFA) * ( MAX_ALFA) ;
-//       printf("alfa = %f\n",alfa);
-        //printf("dquant alfa = %f\n",alfa);
+//      
+        if(alfa == 0)
+          zero_alfa_count++;
+        // printf("after deqauantization alfa = %f\n\n",alfa);
 
         /* Compute the offset */
         beta= (t0 - alfa*s1) / s0;
         if (alfa > 0.0)  beta += alfa * 255;
 
         /* Quantize the offset */
-        qbeta = 0.5 + beta/ ((1.0+fabs(alfa))*255)*((1 << N_BITBETA)-1);
+        qbeta = 0.5 + beta/ ((1.0+fabs(alfa))*255)*((1<< N_BITBETA)-1);
         if (qbeta< 0) qbeta = 0;
         if (qbeta >= 1 << N_BITBETA) qbeta = (1 << N_BITBETA)-1;
 
@@ -654,9 +990,11 @@ double FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
      }
   }
 
-//printf("%f \t %f \t %f",alfa_min,beta_min,error_min);
+// printf("%f \t %f \t %f\n",alfa_min,beta_min,error_min);
+  printf("Zero alfa count = %d\n",zero_alfa_count);
  return (min) ;
 }
+
 
 
 
@@ -1364,7 +1702,23 @@ double SaupeCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
   return (min) ;
 }
 
+int best_rmean(int ics,int yps,int size,double alfa)
+{
+  double rmean;
+  double sum = 0.0;
+  int qrmean;
+  int x,y;
 
+  for(x=0;x < size;x++)
+  for(y=0;y < size;y++) 
+     sum += (double)image[ics+x][yps+y];
+
+  rmean = sum / (double)(size * size);
+   qrmean = quan(rmean);
+
+
+  return qrmean;
+}
 
 int best_beta(int ics,int yps,int size,double alfa)
 {
@@ -1385,6 +1739,116 @@ int best_beta(int ics,int yps,int size,double alfa)
   if (qbeta >= 1 << N_BITBETA) qbeta = (1 << N_BITBETA)-1;
 
   return qbeta;
+}
+void LumInv_quadtree(int atx,int aty,int size,double tol_entr,
+                                       double tol_rms,double tol_var)
+{
+  double best_rms;
+  int domx,domy,isom,qalfa,qrmean;
+  static int coded = 0;
+  static int oldper = 0;
+  static int newper = 0;
+  double compress,bpp;
+  int bytes;
+  int k;
+
+  if(atx >= image_height  || aty >= image_width )
+      return;
+
+  if (size > max_size || atx+size > image_height || aty+size > image_width ) {
+
+     for(k=aty;k<aty+size;k++)
+       qtt[atx+size/2][k] = 0;
+
+     for(k=atx;k<atx+size;k++)
+       qtt[k][aty+size/2] = 0;
+
+     LumInv_quadtree(atx,aty,size/2, tol_entr,tol_rms,tol_var);
+     LumInv_quadtree(atx+size/2,aty,size/2,tol_entr,tol_rms,tol_var);
+     LumInv_quadtree(atx,aty+size/2,size/2,tol_entr,tol_rms,tol_var);
+     LumInv_quadtree(atx+size/2,aty+size/2,size/2,tol_entr,tol_rms,tol_var);
+     return;
+  }
+
+  if ((entropy(size,size, atx, aty) > tol_entr ||
+                   variance(size,size, atx, aty) > tol_var) && size > min_size) {
+
+     tol_entr = tol_entr + (log((double)adapt)/log(2.0)) / 
+               (log((double)max_size)/log(2.0) - log((double)size)/log(2.0) + 1) ;
+
+     pack(1,(long)1,fp);
+     for(k=aty;k<aty+size;k++)
+        qtt[atx+size/2][k] = 0;
+
+     for(k=atx;k<atx+size;k++)
+         qtt[k][aty+size/2] = 0;   
+
+     LumInv_quadtree(atx,aty,size/2, tol_entr,tol_rms*adapt,tol_var*adapt);
+     LumInv_quadtree(atx+size/2,aty,size/2, tol_entr,tol_rms*adapt,tol_var*adapt);
+     LumInv_quadtree(atx,aty+size/2,size/2, tol_entr,tol_rms*adapt,tol_var*adapt);
+     LumInv_quadtree(atx+size/2,aty+size/2,size/2, tol_entr,tol_rms*adapt,tol_var*adapt);
+
+  } else {
+
+     best_rms = LumInv_Coding(atx,aty,size,&domx,&domy,&isom,&qalfa,&qrmean);
+     if (best_rms > tol_rms  && size > min_size) {
+
+        tol_entr =  tol_entr + (log(adapt)/log(2.0)) /
+                 (log((double)max_size)/log(2.0) - log((double)size)/log(2.0) + 1) ;
+
+        pack(1,(long)1,fp);
+        for(k=aty;k<aty+size;k++)
+           qtt[atx+size/2][k] = 0;
+
+        for(k=atx;k<atx+size;k++)
+           qtt[k][aty+size/2] = 0;
+
+        LumInv_quadtree(atx,aty,size/2, tol_entr,tol_rms*adapt,tol_var*adapt);
+        LumInv_quadtree(atx+size/2,aty,size/2, tol_entr,tol_rms*adapt,tol_var*adapt);
+        LumInv_quadtree(atx,aty+size/2,size/2, tol_entr,tol_rms*adapt,tol_var*adapt);
+        LumInv_quadtree(atx+size/2,aty+size/2,size/2, tol_entr,tol_rms*adapt,tol_var*adapt);
+
+     } else {
+
+        if(size > min_size)
+            pack(1,(long)0,fp);
+
+        if(abs(qalfa - zeroalfa) <= zero_threshold) {
+            
+            qalfa = zeroalfa;
+            // qrmean = best_rmean(atx,aty,size,0.0);
+        }
+        pack(N_BITALFA, (long)qalfa, fp);
+        pack(N_BITRMEAN, (long)qrmean, fp);
+        if(isColor){
+          double um = u_mean(size,size,atx,aty);
+          double vm = v_mean(size,size,atx,aty);
+          pack(8,(long)um,fp);
+          pack(8,(long)vm,fp);
+        }
+        zero_alfa_transform ++;
+        // printf("qalfa = %d\n",qalfa);
+        if(qalfa != zeroalfa) {
+           zero_alfa_transform --;
+           pack(3, (long)isom, fp);
+           pack(bits_per_coordinate_h,(long)(domx / SHIFT),fp);
+           pack(bits_per_coordinate_w,(long)(domy / SHIFT),fp);
+        }
+
+        transforms ++;
+        coded += size * size ;
+        newper = (int) (((double) coded / (image_width * image_height)) * 100);
+        if(newper > oldper) {
+           bytes = pack(-2,(long)0,fp);
+           compress =(double) coded / (double)bytes;
+           bpp      = 8.0 /compress;
+           printf(" %d %% Coded, Compression %f:1, bpp %f\r", 
+                                      newper,compress,bpp);
+           oldper = newper;
+           fflush(stdout);
+        }
+     }
+  }
 }
 
 void Nonlinear_quadtree(int atx,int aty,int size,double tol_entr,
@@ -1583,6 +2047,7 @@ void quadtree(int atx,int aty,int size,double tol_entr,
           pack(8,(long)um,fp);
           pack(8,(long)vm,fp);
         }
+        // printf("qalfa = %d\n",qalfa);
         zero_alfa_transform ++;
         if(qalfa != zeroalfa) {
            zero_alfa_transform --;

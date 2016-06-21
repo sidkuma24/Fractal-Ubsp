@@ -174,6 +174,16 @@ int main(int argc, char **argv)
       Nonlinear_Coding = Nonlinear_FisherCoding;
       printf(" Speed-up method: Fisher nonlinear\n\n");
       break;
+    case LumInv_Fisher :  
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<24;i++)
+          class_fisher[k][h][i] = NULL;
+
+      Indexing = FisherIndexing;
+      LumInv_Coding = LumInv_FisherCoding;
+      printf(" Speed-up method:Luminance Invariant Fisher \n\n");
+      break;
     case Hurtgen :  
       for(k=0;k<8;k++)
       for(h=0;h<16;h++)
@@ -253,16 +263,22 @@ int main(int argc, char **argv)
   /* Header of output file */
 
   if(isNonlinear){
-    pack(1,(long)1,fp);
+    pack(2,(long)1,fp);
     pack(4,(long)N_BITALFA1,fp);
     pack(4,(long)N_BITALFA2,fp);
     pack(4,(long)N_BITBETA2,fp);
-  
+  }else if(isLumInv){
+    pack(2,(long)2,fp);
+    pack(4,(long)N_BITALFA,fp);
+    pack(4,(long)N_BITRMEAN,fp);
   }else{
-    pack(1,(long)0,fp);
+    pack(2,(long)0,fp);
     pack(4,(long)N_BITALFA,fp);
     pack(4,(long)N_BITBETA,fp);
   }
+  
+  
+
   pack(7,(long)min_size,fp);
   pack(7,(long)max_size,fp);
   pack(6,(long)SHIFT,fp);
@@ -282,8 +298,9 @@ int main(int argc, char **argv)
   printf(" Color              : %s\n\n", isColor?"True":"False");
 
   if(isNonlinear)
-    
     Nonlinear_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
+  else if(isLumInv)
+    LumInv_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
   else
     quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
 
