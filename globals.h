@@ -105,7 +105,9 @@ struct c {
 	   double sum2;
      double sum3;
      double sum4;
-     short iso;
+     double var;
+     int iso;
+
 	   struct c *next;
 	 };
 
@@ -143,9 +145,18 @@ EXTERN int display      INIT(= 0);
 EXTERN double zoom      INIT(= 1.0);
 
 EXTERN PIXEL **image1;
+EXTERN double max_std_arr[8];
+EXTERN double max_ent_arr[8];
+EXTERN int final_max_std INIT(=0);
+EXTERN double final_max_ent INIT(=0);
+EXTERN int final_max_ent_q INIT(=0);
 
 EXTERN struct c ***class_polar[8];
 EXTERN struct c *class_fisher[8][3][24];
+EXTERN struct c **class_std[8][3];
+EXTERN struct c **class_entropy[8][3];
+EXTERN struct c *class_basicFIC[8][3];
+// EXTERN struct c *class_fisher[8][3][240];
 EXTERN struct c *class_hurtgen[8][16][24];
 
 EXTERN kdtree  ***class_polar_saupe[8];
@@ -169,9 +180,11 @@ EXTERN int N_BITBETA  INIT(=  7);
 EXTERN int N_BITALFA1 INIT(=  5);
 EXTERN int N_BITALFA2  INIT(=  5);
 EXTERN int N_BITBETA2 INIT(=  8);
-EXTERN int N_BITRMEAN INIT(=  8);
+EXTERN int N_BITRMEAN INIT(=  7);
+
 
 EXTERN double MAX_ALFA  INIT(=  1.0);
+EXTERN int MAX_BITS  INIT(=  4);
 EXTERN double MAX_ALFA1  INIT(=  1.5);
 EXTERN double MAX_ALFA2 INIT(=  0.015);
 EXTERN int min_size INIT(= 4);
@@ -217,11 +230,13 @@ EXTERN double **range;
 EXTERN double **range_tmp;
 EXTERN double **flip_range;
 EXTERN double (*Coding) (int, int, int, int*, int*, int*, int*, int*);
+EXTERN double (*testing_Coding) (int, int, int, int*, int*, int*, int*, int*);
 EXTERN double (*LumInv_Coding) (int, int, int, int*, int*, int*, int*, int*);
 EXTERN double (*Nonlinear_Coding) (int, int, int, int*, int*, int*, int*, int*,int* );
 EXTERN void (*Indexing) (int, int);
 EXTERN int method INIT(= MassCenter);
 EXTERN int isColor INIT(= 0);
 EXTERN int isNonlinear INIT(=0);
+EXTERN int isTesting INIT(=0);
 EXTERN int isLumInv INIT(=0);
 EXTERN int zero_alfa_count INIT(=0);

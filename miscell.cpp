@@ -69,7 +69,9 @@ void help_enc()
   " -A # Num of bits for alfa   (4)     -B # Number of bits for beta     (7)  \n"
   " -y # Max value of alfa      (1.0)   -Q   Output a quadtree image     (Off)\n"
   " -z # Force alfa to be 0     (0)     -h   Display this help \n"
-  " -FN  Nonlinear Fisher               -FL Luminence Invarient Fisher     \n\n"
+  " -FN  Nonlinear Fisher               -FL Luminence Invarient Fisher        \n"
+  " -FS  Classification on Standard Dev.  -FB Basic Fractal Coding             \n"                                 
+  " -FE  Classification on Entropy.       -Q2   Based on New quadtree          \n"                                 
   " Supported image format: raw and pgm\n"
   " Default input file : lena.raw\n"
   " Default output file: lena.ifs\n\n"
@@ -124,9 +126,26 @@ void getopt_enc(int argc, char **argv)
                          method = LumInv_Fisher;
                          isLumInv = 1;
                          break; 
-                }
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'T')){
+                         method = testing_Fisher;
+                         isTesting = 1;
+                         break;
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'S')){
+                         method = Fisher_std;
+                         break;
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'B')){
+                         method = BasicFIC;
+                         break;
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'E')){
+                         method = Entropy_based;
+                         break;
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'V')){
+                         method = CoVar;
+                         break;                  
+                }else {
                          method = Fisher;        
                          break;
+                }
                case 'X': method = Hurtgen;
                          break;
                case 'Z': method = SaupeFisher;

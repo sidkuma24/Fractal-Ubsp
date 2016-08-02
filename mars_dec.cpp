@@ -33,7 +33,6 @@
  ******************************************************************************/
 
 
-
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -87,12 +86,18 @@ int main(int argc, char **argv)
       N_BITALFA = (int)unpack(4,input);
       N_BITRMEAN = (int)unpack(4,input);
       break;
+    case 3:
+      isTesting = 1;
+      printf("testing new method with Fisher coding\n");
+      N_BITALFA = (int)unpack(4,input);
+      N_BITRMEAN = (int)unpack(4,input);
+      break;
   }
   
   min_size       = (int)unpack(7,input);
   max_size       = (int)unpack(7,input);
   SHIFT          = (int)unpack(6,input);
-  image_width    = (int)unpack(12,input);
+  image_width   = (int)unpack(12,input);
   image_height   = (int)unpack(12,input);
   int_max_alfa   = (int)unpack(8,input);
   isColor        = (int)unpack(1,input);
@@ -121,6 +126,8 @@ int main(int argc, char **argv)
     read_transformations_nonlinear(0,0,virtual_size);
   }else if(isLumInv){ 
     read_transformations_LumInv(0,0,virtual_size);
+  }else if(isTesting){
+    read_transformations_testing(0,0,virtual_size);
   }else{
     read_transformations(0,0,virtual_size);
 
@@ -164,15 +171,20 @@ int main(int argc, char **argv)
       iterative_decoding_nonlinear(lev,iterations,zoom);    /* Decode at low resolution */ 
      }else if(isLumInv){
       iterative_decoding_LumInv(lev,iterations,zoom);
-     } else{
+     }else if(isTesting){
+      iterative_decoding_testing(lev,iterations,zoom);
+     }else{
       iterative_decoding(lev,iterations,zoom);
      }
+
 
      if(isNonlinear){ 
        piramidal_decoding_nonlinear(lev); /* Increase resolution      */
      }else if(isLumInv){
        piramidal_decoding_LumInv(lev);                     
-     }else{
+     }else if(isTesting){
+       piramidal_decoding_testing(lev);
+     } else{
        piramidal_decoding(lev);                     
      }
        
@@ -182,7 +194,9 @@ int main(int argc, char **argv)
           iterative_decoding_nonlinear(0,2,1.0); 
         else if (isLumInv)
           iterative_decoding_LumInv(0,2,1.0);
-        else
+        else if (isTesting)
+          iterative_decoding_testing(0,2,1.0);
+         else 
           iterative_decoding(0,2,1.0);     
 
      }    
@@ -192,6 +206,8 @@ int main(int argc, char **argv)
         iterative_decoding_nonlinear(0,iterations,zoom);
       else if(isLumInv)
         iterative_decoding_LumInv(0,iterations,zoom); 
+      else if(isTesting)
+        iterative_decoding_testing(0,iterations,zoom);
       else
         iterative_decoding(0,iterations,zoom); 
 
@@ -203,18 +219,18 @@ int main(int argc, char **argv)
 
   if( isColor ){ // Conver to RGB
     std::vector<cv::Mat> yuvChannels;
-    cv::Mat ych(image_width,image_height, CV_8U);
-    cv::Mat uch(image_width,image_height, CV_8U);
-    cv::Mat vch(image_width,image_height, CV_8U);
+    cv::Mat ych(image_height,image_width, CV_8U);
+    cv::Mat uch(image_height,image_width, CV_8U);
+    cv::Mat vch(image_height,image_width, CV_8U);
     yuvChannels.push_back(ych);
     yuvChannels.push_back(uch);
     yuvChannels.push_back(vch);
 
     for (int iii = 0; iii < image_width; iii++) {
       for (int jjj = 0; jjj < image_height; jjj++) {
-        yuvChannels[0].at<uchar>(jjj, iii) = image[jjj][iii];
-        yuvChannels[1].at<uchar>(jjj, iii) = image_uch[jjj][iii];
-        yuvChannels[2].at<uchar>(jjj, iii) = image_vch[jjj][iii];
+        yuvChannels[0].at<uchar>(jjj,iii) = image[jjj][iii];
+        yuvChannels[1].at<uchar>(jjj,iii) = image_uch[jjj][iii];
+        yuvChannels[2].at<uchar>(jjj,iii) = image_vch[jjj][iii];
       }
     }
     cv::merge(yuvChannels, ych);
@@ -272,11 +288,80 @@ void zooming(double scalefactor)
      trans->dy   *= scalefactor;
   }
 }
+void read_transformations_testing(int atx,int aty,int size)
+{ 
+  int qalfa,qrmean;
+  double alfa,rmean,beta, um,vm;
+  int ddx, ddy;
 
+
+  if(atx >= image_height  || aty >= image_width )
+      return;
+
+  if (size > max_size || atx+size > image_height || aty+size > image_width){
+      read_transformations_testing(atx,aty,size/2);
+      read_transformations_testing(atx+size/2,aty,size/2);
+      read_transformations_testing(atx,aty+size/2,size/2);
+      read_transformations_testing(atx+size/2,aty+size/2,size/2);
+      return;
+  }
+
+  if (size > min_size && unpack(1,input)) {
+      /* A 1 means we subdivided.. so quadtree */
+      read_transformations_testing(atx,aty,size/2);
+      read_transformations_testing(atx+size/2,aty,size/2);
+      read_transformations_testing(atx,aty+size/2,size/2);
+      read_transformations_testing(atx+size/2,aty+size/2,size/2);
+  } else {
+      /* Read the trasformation */  
+      transforms++;
+      trans->next = (struct t_node *) malloc(sizeof(struct t_node ));
+      trans       = trans->next; 
+      trans->next = NULL;
+      qalfa       = (int)unpack(N_BITALFA,  input);
+      qrmean       = (int)unpack(N_BITRMEAN,  input);
+      if(isColor){
+        um = (int)unpack(8,input);
+        vm = (int)unpack(8,input);
+      }
+
+      /* Compute alfa from the quantized value */
+      alfa = (double) qalfa / (double)(1 << N_BITALFA) * (MAX_ALFA) ;
+      
+      /* Compute rmean from the quantized value */
+     rmean = (double)qrmean/(double)((1 << N_BITRMEAN)-1)*((1.0+fabs(alfa))*255);
+        if (alfa > 0.0) rmean  -= alfa * 255;
+         
+      trans->alfa = alfa;
+      trans->rmean = rmean;
+      if(isColor){
+        trans->um = um;
+        trans->vm = vm;
+      }
+      if(qalfa != zeroalfa) {      
+          trans-> sym_op = (int)unpack(3, input);
+          ddx = (int)unpack(bits_per_coordinate_h,input);
+          ddy = (int)unpack(bits_per_coordinate_w,input);
+          trans->dx = SHIFT * ddx;
+          trans->dy = SHIFT * ddy;
+         // printf("%d %d\n", ddx, ddy);
+      } else {
+          trans-> sym_op = 0;
+          trans-> dx  = 0;
+          trans-> dy = 0;
+      }
+      trans->rx = atx;
+      trans->ry = aty;
+      trans->size = size;
+      trans->rrx = atx + size;
+      trans->rry = aty + size;
+ 
+  }
+}
 void read_transformations_LumInv(int atx,int aty,int size)
 { 
   int qalfa,qrmean;
-  double alfa,rmean, um,vm;
+  double alfa,rmean,beta, um,vm;
   int ddx, ddy;
 
 
@@ -314,7 +399,8 @@ void read_transformations_LumInv(int atx,int aty,int size)
       alfa = (double) qalfa / (double)(1 << N_BITALFA) * (MAX_ALFA) ;
       
       /* Compute rmean from the quantized value */
-     rmean = (double)qrmean;
+     rmean = (double)qrmean/(double)((1 << N_BITRMEAN)-1)*((1.0+fabs(alfa))*255);
+        if (alfa > 0.0) beta  -= alfa * 255;
          
       trans->alfa = alfa;
       trans->rmean = rmean;
@@ -328,7 +414,7 @@ void read_transformations_LumInv(int atx,int aty,int size)
           ddy = (int)unpack(bits_per_coordinate_w,input);
           trans->dx = SHIFT * ddx;
           trans->dy = SHIFT * ddy;
-        //  printf("%d %d\n", ddx, ddy);
+         // printf("%d %d\n", ddx, ddy);
       } else {
           trans-> sym_op = 0;
           trans-> dx  = 0;
@@ -402,7 +488,7 @@ void read_transformations_nonlinear(int atx,int aty,int size)
         trans->um = um;
         trans->vm = vm;
       }
-     if(qalfa1 != zeroalfa) {      
+     if(qalfa1 != zeroalfa || qalfa2 != zeroalfa) {      
           trans-> sym_op = (int)unpack(3, input);
           ddx = (int)unpack(bits_per_coordinate_h,input);
           ddy = (int)unpack(bits_per_coordinate_w,input);
@@ -423,6 +509,85 @@ void read_transformations_nonlinear(int atx,int aty,int size)
   }
 }
 
+void read_transformations_2(int atx,int aty,int size)
+{ 
+  int qalfa,qbeta;
+  double alfa,beta, um,vm;
+  int ddx, ddy;
+
+  int s_log, s_size;
+  s_log = bitlength(size) - 1;
+  s_size = 1 << s_log;
+
+
+  if(atx >= image_height  || aty >= image_width )
+      return;
+
+  if (size > max_size || atx+size > image_height || aty+size > image_width){
+      read_transformations_2(atx,aty,size/2);
+      read_transformations_2(atx+size/2,aty,size/2);
+      read_transformations_2(atx,aty+size/2,size/2);
+      read_transformations_2(atx+size/2,aty+size/2,size/2);
+      return;
+  }
+
+  if (size > min_size && unpack(1,input)) {
+      /* A 1 means we subdivided.. so quadtree */
+      read_transformations_2(atx,aty,size/2);
+      read_transformations_2(atx+size/2,aty,size/2);
+      read_transformations_2(atx,aty+size/2,size/2);
+      read_transformations_2(atx+size/2,aty+size/2,size/2);
+  }else if(s_log > MAX_BITS && unpack(1,input)){
+      read_transformations_2(atx,aty,size/2);
+      read_transformations_2(atx+size/2,aty,size/2);
+      read_transformations_2(atx,aty+size/2,size/2);
+      read_transformations_2(atx+size/2,aty+size/2,size/2);
+  } else {
+      /* Read the trasformation */  
+      transforms++;
+      trans->next = (struct t_node *) malloc(sizeof(struct t_node ));
+      trans       = trans->next; 
+      trans->next = NULL;
+      qalfa       = (int)unpack(N_BITALFA,  input);
+      qbeta       = (int)unpack(N_BITBETA,  input);
+      if(isColor){
+        um = (int)unpack(8,input);
+        vm = (int)unpack(8,input);
+      }
+
+      /* Compute alfa from the quantized value */
+      alfa = (double) qalfa / (double)(1 << N_BITALFA) * (MAX_ALFA) ;
+      
+      /* Compute beta from the quantized value */
+      beta = (double) qbeta/(double)((1 << N_BITBETA)-1)* ((1.0+fabs(alfa)) * 255);
+      if (alfa > 0.0) beta  -= alfa * 255;
+         
+      trans->alfa = alfa;
+      trans->beta = beta;
+      if(isColor){
+        trans->um = um;
+        trans->vm = vm;
+      }
+      if(qalfa != zeroalfa) {      
+          trans-> sym_op = (int)unpack(3, input);
+          ddx = (int)unpack(bits_per_coordinate_h,input);
+          ddy = (int)unpack(bits_per_coordinate_w,input);
+          trans->dx = SHIFT * ddx;
+          trans->dy = SHIFT * ddy;
+         // printf("%d %d\n", ddx, ddy);
+      } else {
+          trans-> sym_op = 0;
+          trans-> dx  = 0;
+          trans-> dy = 0;
+      }
+      trans->rx = atx;
+      trans->ry = aty;
+      trans->size = size;
+      trans->rrx = atx + size;
+      trans->rry = aty + size;
+ 
+  }
+}
 
 void read_transformations(int atx,int aty,int size)
 { 
@@ -480,7 +645,7 @@ void read_transformations(int atx,int aty,int size)
           ddy = (int)unpack(bits_per_coordinate_w,input);
           trans->dx = SHIFT * ddx;
           trans->dy = SHIFT * ddy;
-        //  printf("%d %d\n", ddx, ddy);
+         // printf("%d %d\n", ddx, ddy);
       } else {
           trans-> sym_op = 0;
           trans-> dx  = 0;
@@ -494,6 +659,182 @@ void read_transformations(int atx,int aty,int size)
  
   }
 }
+
+void iterative_decoding_testing(int level,int n_iter,double zoo)
+{
+  int rx,ry,rrx,rry,dx,dy;
+  register int i,j,ii,jj,s;
+  register PIXEL **imag,**imag1;
+  double pixel;
+  double z_factor;
+  int width,height;
+  static int first_time = 0;
+
+
+  printf("\n");
+  z_factor = zoo / (double) (1 << level);
+  zooming(z_factor);
+  width  = (int) rint(image_width  * z_factor / zoo); 
+  height = (int) rint(image_height * z_factor / zoo); 
+
+  if(first_time++ == 0)
+     for(i=0;i< height;i++)
+     for(j=0;j< width ;j++) 
+        image[i][j] = 128;
+
+  for(s=0; s < n_iter ; s++) {
+     imag = image;
+     imag1 = image1;
+
+     if(level > 0)
+         printf(" Decoding at low resolution (%dx%d) %d\r",width,height,s);
+     else
+         printf(" Iterative decoding... %d\r",s);
+
+     fflush(stdout);
+     trans = &fractal_code;
+     while(trans->next != NULL)  {
+        trans = trans->next;
+        rx=(int)rint(trans->rx);
+        ry=(int)rint(trans->ry);
+        dx=(int)rint(trans->dx);
+        dy=(int)rint(trans->dy);
+        rrx=(int)rint(trans->rrx);
+        rry=(int)rint(trans->rry);
+
+        switch(trans->sym_op) {     
+         case IDENTITY   : 
+            for(i=rx,ii=dx;i< rrx;i++,ii+=2)
+            for(j=ry,jj=dy;j< rry;j++,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               trans->beta = trans->rmean - trans->alfa * pixel; 
+               printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+         case R_ROTATE90 :  
+            for(j=rry-1,ii=dx;j>= ry;j--,ii+=2)
+            for(i=rx,jj=dy;i< rrx;i++,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               trans->beta = trans->rmean - trans->alfa * pixel;
+               printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+
+            }
+            break;
+         case L_ROTATE90 :  
+      for(j=ry,ii=dx;j< rry;j++,ii+=2) 
+            for(i=rrx-1,jj=dy;i>= rx;i--,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               trans->beta = trans->rmean - trans->alfa * pixel;
+               printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+
+            }
+            break;
+         case ROTATE180 :  
+      for(i=rrx-1,ii=dx;i>= rx;i--,ii+=2) 
+            for(j=rry-1,jj=dy;j>= ry;j--,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               trans->beta = trans->rmean - trans->alfa * pixel;
+               printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+         case R_VERTICAL :  
+      for(i=rx,ii=dx;i< rrx;i++,ii+=2) 
+            for(j=rry-1,jj=dy;j>= ry;j--,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               trans->beta = trans->rmean - trans->alfa * pixel;
+               printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+         case R_HORIZONTAL: 
+      for(i=rrx-1,ii=dx;i>= rx;i--,ii+=2)
+            for(j=ry,jj=dy;j< rry;j++,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               trans->beta = trans->rmean - trans->alfa * pixel;
+               printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+         case F_DIAGONAL :  
+      for(j=ry,ii=dx;j< rry;j++,ii+=2)
+            for(i=rx,jj=dy;i< rrx;i++,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               trans->beta = trans->rmean - trans->alfa * pixel;
+               // printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+         case S_DIAGONAL:   
+      for(j=rry-1,ii=dx;j>= ry;j--,ii+=2) 
+      for(i=rrx-1,jj=dy;i>= rx;i--,jj+=2){
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+              trans->beta = trans->rmean - trans->alfa * pixel;
+              printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+
+       }
+     } 
+
+   swap1(image1, image, PIXEL **)
+
+ }
+  printf("\n");
+}
+
+
+
 
 void iterative_decoding_nonlinear(int level,int n_iter,double zoo)
 {
@@ -543,7 +884,7 @@ void iterative_decoding_nonlinear(int level,int n_iter,double zoo)
             for(j=ry,jj=dy;j< rry;j++,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
+               imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
                                                                       trans->beta);
                // if(imag1[i][j] > 127 ) imag1[i][j] = 127;
                // if(imag1[i][j] <  -128 ) imag1[i][j] = -128;
@@ -577,7 +918,7 @@ void iterative_decoding_nonlinear(int level,int n_iter,double zoo)
             for(i=rrx-1,jj=dy;i>= rx;i--,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-                imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
+                imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
                                                                       trans->beta);
                 // printf("image[i][j] = %d\n",image[i][j]);
                //   if(imag1[i][j] > 127 ) imag1[i][j] = 127;
@@ -594,7 +935,7 @@ void iterative_decoding_nonlinear(int level,int n_iter,double zoo)
             for(j=rry-1,jj=dy;j>= ry;j--,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
+               imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
                                                                       trans->beta);
                // printf("image[i][j] = %d\n",image[i][j]);
                //  if(imag1[i][j] > 127 ) imag1[i][j] = 127;
@@ -610,7 +951,7 @@ void iterative_decoding_nonlinear(int level,int n_iter,double zoo)
             for(j=rry-1,jj=dy;j>= ry;j--,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-                imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
+                imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
                                                                       trans->beta);
                 // printf("image[i][j] = %d\n",image[i][j]);
                //   if(imag1[i][j] > 127 ) imag1[i][j] = 127;
@@ -626,7 +967,7 @@ void iterative_decoding_nonlinear(int level,int n_iter,double zoo)
             for(j=ry,jj=dy;j< rry;j++,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
+               imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
                                                                       trans->beta);
                // printf("image[i][j] = %d\n",image[i][j]);
                //  if(imag1[i][j] > 127 ) imag1[i][j] = 127;
@@ -642,7 +983,7 @@ void iterative_decoding_nonlinear(int level,int n_iter,double zoo)
             for(i=rx,jj=dy;i< rrx;i++,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
+               imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
                                                                       trans->beta);
                // printf("image[i][j] = %d\n",image[i][j]);
                //  if(imag1[i][j] > 127 ) imag1[i][j] = 127;
@@ -658,7 +999,7 @@ void iterative_decoding_nonlinear(int level,int n_iter,double zoo)
       for(i=rrx-1,jj=dy;i>= rx;i--,jj+=2){
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
+               imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel * trans->alfa2 +
                                                                       trans->beta);
                // printf("image[i][j] = %d\n",image[i][j]);
                //  if(imag1[i][j] > 127 ) imag1[i][j] = 127;
@@ -727,8 +1068,12 @@ void iterative_decoding_LumInv(int level,int n_iter,double zoo)
             for(j=ry,jj=dy;j< rry;j++,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+               imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
+               // printf("%d\n",imag1[i][j]);
+
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -740,8 +1085,11 @@ void iterative_decoding_LumInv(int level,int n_iter,double zoo)
             for(i=rx,jj=dy;i< rrx;i++,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+               imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -754,8 +1102,11 @@ void iterative_decoding_LumInv(int level,int n_iter,double zoo)
             for(i=rrx-1,jj=dy;i>= rx;i--,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+               imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -768,8 +1119,11 @@ void iterative_decoding_LumInv(int level,int n_iter,double zoo)
             for(j=rry-1,jj=dy;j>= ry;j--,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+               imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -781,8 +1135,11 @@ void iterative_decoding_LumInv(int level,int n_iter,double zoo)
             for(j=rry-1,jj=dy;j>= ry;j--,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+               imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -794,8 +1151,12 @@ void iterative_decoding_LumInv(int level,int n_iter,double zoo)
             for(j=ry,jj=dy;j< rry;j++,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -807,8 +1168,12 @@ void iterative_decoding_LumInv(int level,int n_iter,double zoo)
             for(i=rx,jj=dy;i< rrx;i++,jj+=2) {
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -820,8 +1185,170 @@ void iterative_decoding_LumInv(int level,int n_iter,double zoo)
       for(i=rrx-1,jj=dy;i>= rx;i--,jj+=2){
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+
+               // printf("%d\n",imag1[i][j]);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+
+       }
+     } 
+
+   swap1(image1, image, PIXEL **)
+
+ }
+   printf("\n");
+}
+void iterative_decoding_LumInv2(int level,int n_iter,double zoo)
+{
+  int rx,ry,rrx,rry,dx,dy;
+  register int i,j,ii,jj,s;
+  register PIXEL **imag,**imag1;
+  double pixel;
+  double z_factor;
+  int width,height;
+  static int first_time = 0;
+  double beta  = 0.0;
+
+  printf("\n");
+  z_factor = zoo / (double) (1 << level);
+  zooming(z_factor);
+  width  = (int) rint(image_width  * z_factor / zoo); 
+  height = (int) rint(image_height * z_factor / zoo); 
+
+  if(first_time++ == 0)
+     for(i=0;i< height;i++)
+     for(j=0;j< width ;j++) 
+        image[i][j] = 128;
+
+  for(s=0; s < n_iter ; s++) {
+     imag = image;
+     imag1 = image1;
+
+     if(level > 0)
+          printf(" Decoding at low resolution (%dx%d) %d\r",width,height,s);
+     else
+          printf(" Iterative decoding... %d\r",s);
+
+     fflush(stdout);
+     trans = &fractal_code;
+     while(trans->next != NULL)  {
+        trans = trans->next;
+        rx=(int)rint(trans->rx);
+        ry=(int)rint(trans->ry);
+        dx=(int)rint(trans->dx);
+        dy=(int)rint(trans->dy);
+        rrx=(int)rint(trans->rrx);
+        rry=(int)rint(trans->rry);
+
+        switch(trans->sym_op) {     
+         case IDENTITY   : 
+            for(i=rx,ii=dx;i< rrx;i++,ii+=2)
+            for(j=ry,jj=dy;j< rry;j++,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+         case R_ROTATE90 :  
+            for(j=rry-1,ii=dx;j>= ry;j--,ii+=2)
+            for(i=rx,jj=dy;i< rrx;i++,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+
+            }
+            break;
+         case L_ROTATE90 :  
+      for(j=ry,ii=dx;j< rry;j++,ii+=2) 
+            for(i=rrx-1,jj=dy;i>= rx;i--,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+
+            }
+            break;
+         case ROTATE180 :  
+      for(i=rrx-1,ii=dx;i>= rx;i--,ii+=2) 
+            for(j=rry-1,jj=dy;j>= ry;j--,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+         case R_VERTICAL :  
+      for(i=rx,ii=dx;i< rrx;i++,ii+=2) 
+            for(j=rry-1,jj=dy;j>= ry;j--,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+         case R_HORIZONTAL: 
+      for(i=rrx-1,ii=dx;i>= rx;i--,ii+=2)
+            for(j=ry,jj=dy;j< rry;j++,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+         case F_DIAGONAL :  
+      for(j=ry,ii=dx;j< rry;j++,ii+=2)
+            for(i=rx,jj=dy;i< rrx;i++,jj+=2) {
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+               if (isColor) {
+                 image_uch[i][j] = trans->um;
+                 image_vch[i][j] = trans->vm;
+               }
+            }
+            break;
+         case S_DIAGONAL:   
+      for(j=rry-1,ii=dx;j>= ry;j--,ii+=2) 
+      for(i=rrx-1,jj=dy;i>= rx;i--,jj+=2){
+               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
+                                         imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
+               beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -837,7 +1364,6 @@ void iterative_decoding_LumInv(int level,int n_iter,double zoo)
  }
   printf("\n");
 }
-
 void iterative_decoding(int level,int n_iter,double zoo)
 {
   int rx,ry,rrx,rry,dx,dy;
@@ -854,11 +1380,15 @@ void iterative_decoding(int level,int n_iter,double zoo)
   zooming(z_factor);
   width  = (int) rint(image_width  * z_factor / zoo); 
   height = (int) rint(image_height * z_factor / zoo); 
-
+  cv::Mat startImg;
+  startImg = cv::imread("./filter/noise_free.png",CV_LOAD_IMAGE_GRAYSCALE);
   if(first_time++ == 0)
      for(i=0;i< height;i++)
-     for(j=0;j< width ;j++) 
-        image[i][j] = 128;
+     for(j=0;j< width ;j++){ 
+        image[i][j] = startImg.at<uchar>(i,j);  
+        // image[i][j] = 128;
+      }
+
 
   for(s=0; s < n_iter ; s++) {
      imag = image;
@@ -887,6 +1417,7 @@ void iterative_decoding(int level,int n_iter,double zoo)
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
                imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -899,6 +1430,7 @@ void iterative_decoding(int level,int n_iter,double zoo)
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
                imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -912,6 +1444,7 @@ void iterative_decoding(int level,int n_iter,double zoo)
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
                imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -925,6 +1458,7 @@ void iterative_decoding(int level,int n_iter,double zoo)
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
                imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -937,6 +1471,7 @@ void iterative_decoding(int level,int n_iter,double zoo)
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
                imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -949,6 +1484,7 @@ void iterative_decoding(int level,int n_iter,double zoo)
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
                imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -961,6 +1497,7 @@ void iterative_decoding(int level,int n_iter,double zoo)
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
                imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -973,6 +1510,7 @@ void iterative_decoding(int level,int n_iter,double zoo)
                pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
                imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+               // printf("%d\n",imag1[i][j]);
                if (isColor) {
                  image_uch[i][j] = trans->um;
                  image_vch[i][j] = trans->vm;
@@ -1024,8 +1562,9 @@ void piramidal_decoding_LumInv(int level)
            for(j=ry,jj=dy >> 1;j< rry;j++,jj++) {
               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+              imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
               if (isColor) {
                 image_uch[i][j] = trans->um;
                 image_vch[i][j] = trans->vm;
@@ -1037,8 +1576,10 @@ void piramidal_decoding_LumInv(int level)
            for(i=rx,jj=dy >> 1;i< rrx;i++,jj++) {
              pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+             // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+             imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
               if (isColor) {
                 image_uch[i][j] = trans->um;
                 image_vch[i][j] = trans->vm;
@@ -1050,8 +1591,10 @@ void piramidal_decoding_LumInv(int level)
            for(i=rrx-1,jj=dy >> 1;i>= rx;i--,jj++) {
               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+              // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+              imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
               if (isColor) {
                 image_uch[i][j] = trans->um;
                 image_vch[i][j] = trans->vm;
@@ -1063,8 +1606,10 @@ void piramidal_decoding_LumInv(int level)
            for(j=rry-1,jj=dy >> 1;j>= ry;j--,jj++) {
             pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+            // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+            imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
               if (isColor) {
                 image_uch[i][j] = trans->um;
                 image_vch[i][j] = trans->vm;
@@ -1076,8 +1621,10 @@ void piramidal_decoding_LumInv(int level)
            for(j=rry-1,jj=dy >> 1;j>= ry;j--,jj++) {
               pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+              // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+              imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
               if (isColor) {
                 image_uch[i][j] = trans->um;
                 image_vch[i][j] = trans->vm;
@@ -1089,8 +1636,10 @@ void piramidal_decoding_LumInv(int level)
            for(j=ry,jj=dy >> 1;j< rry;j++,jj++) {
              pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+             // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+             imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
               if (isColor) {
                 image_uch[i][j] = trans->um;
                 image_vch[i][j] = trans->vm;
@@ -1102,8 +1651,10 @@ void piramidal_decoding_LumInv(int level)
            for(i=rx,jj=dy >> 1;i< rrx;i++,jj++) {
             pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+            // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+            imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
               if (isColor) {
                 image_uch[i][j] = trans->um;
                 image_vch[i][j] = trans->vm;
@@ -1115,8 +1666,10 @@ void piramidal_decoding_LumInv(int level)
            for(i=rrx-1,jj=dy >> 1;i>= rx;i--,jj++){
              pixel = (double)(imag[ii][jj]+imag[ii+1][jj] +
                                          imag[ii][jj+1]+imag[ii+1][jj+1])/4.0;
-               imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
-                                    (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+               // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)+(imag[ii+1][jj] - pixel)+
+                                    // (imag[ii][jj+1] - pixel)+(imag[ii+1][jj+1] - pixel))*trans->alfa + trans->rmean);
+             // imag1[i][j] = bound(0.5 + ((imag[ii][jj] - pixel)*trans->alfa + trans->rmean));
+             imag1[i][j] = bound(0.5 + ((pixel)*trans->alfa + trans->rmean));
               if (isColor) {
                 image_uch[i][j] = trans->um;
                 image_vch[i][j] = trans->vm;
@@ -1132,6 +1685,155 @@ void piramidal_decoding_LumInv(int level)
     if(quality)
        iterative_decoding_LumInv(0,2,1.0); 
     piramidal_decoding_LumInv(level-1);
+  }
+
+}
+
+void piramidal_decoding_testing(int level)
+{
+  int rx,ry,rrx,rry,dx,dy;
+  register int i,j,ii,jj;
+  register PIXEL **imag,**imag1;
+  double pixel;
+
+  if(level < 1)
+     return;
+
+  zooming(2.0);   /* Increase resolution */
+
+  imag = image;
+  imag1 = image1;
+
+  printf(" Increasing resolution... \r");
+  fflush(stdout);
+  trans = &fractal_code;
+
+  while(trans->next != NULL)  {
+     trans = trans->next;
+
+     rx=(int)rint(trans->rx);
+     ry=(int)rint(trans->ry);
+     dx=(int)rint(trans->dx);
+     dy=(int)rint(trans->dy);
+     rrx=(int)rint(trans->rrx);
+     rry=(int)rint(trans->rry);
+
+     switch(trans->sym_op) {
+        case IDENTITY   :  
+     for(i=rx,ii=dx >> 1;i< rrx;i++,ii++)
+           for(j=ry,jj=dy >> 1;j< rry;j++,jj++) {
+              pixel = (double)imag[ii][jj];
+              trans->beta = trans->rmean - trans->alfa * pixel;
+              printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case R_ROTATE90 :  
+     for(j=rry-1,ii=dx >> 1;j>= ry;j--,ii++)
+           for(i=rx,jj=dy >> 1;i< rrx;i++,jj++) {
+              pixel = (double)imag[ii][jj];
+              trans->beta = trans->rmean - trans->alfa * pixel;
+               printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case L_ROTATE90 :  
+     for(j=ry,ii=dx >> 1;j< rry;j++,ii++)
+           for(i=rrx-1,jj=dy >> 1;i>= rx;i--,jj++) {
+              pixel = (double)imag[ii][jj];
+
+              trans->beta = trans->rmean - trans->alfa * pixel;
+              printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case ROTATE180 :  
+     for(i=rrx-1,ii=dx >> 1;i>= rx;i--,ii++)
+           for(j=rry-1,jj=dy >> 1;j>= ry;j--,jj++) {
+              pixel = (double)imag[ii][jj];
+              trans->beta = trans->rmean - trans->alfa * pixel;
+               printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case R_VERTICAL :  
+     for(i=rx,ii=dx >> 1;i< rrx;i++,ii++)
+           for(j=rry-1,jj=dy >> 1;j>= ry;j--,jj++) {
+              pixel = (double)imag[ii][jj];
+              trans->beta = trans->rmean - trans->alfa * pixel;
+               printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case R_HORIZONTAL: 
+     for(i=rrx-1,ii=dx >> 1;i>= rx;i--,ii++)
+           for(j=ry,jj=dy >> 1;j< rry;j++,jj++) {
+              pixel = (double)imag[ii][jj];
+              trans->beta = trans->rmean - trans->alfa * pixel;
+               printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case F_DIAGONAL :  
+     for(j=ry,ii=dx >> 1;j< rry;j++,ii++)
+           for(i=rx,jj=dy >> 1;i< rrx;i++,jj++) {
+              pixel = (double)imag[ii][jj];
+              
+              trans->beta = trans->rmean - trans->alfa * pixel;
+              printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case S_DIAGONAL:   
+     for(j=rry-1,ii=dx >> 1;j>= ry;j--,ii++)
+           for(i=rrx-1,jj=dy >> 1;i>= rx;i--,jj++){
+              pixel = (double)imag[ii][jj];
+              trans->beta = trans->rmean - trans->alfa * pixel;
+               printf("%f\n",trans->beta);
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + trans->beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+     }
+
+  } 
+  swap1(image1, image, PIXEL **)
+
+  if(level > 1) {
+    if(quality)
+       iterative_decoding_testing(0,2,1.0); 
+    piramidal_decoding_testing(level-1);
   }
 
 }
@@ -1170,7 +1872,7 @@ void piramidal_decoding_nonlinear(int level)
      for(i=rx,ii=dx >> 1;i< rrx;i++,ii++)
            for(j=ry,jj=dy >> 1;j< rry;j++,jj++) {
               pixel = (double)imag[ii][jj];
-               imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
+               imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
                                                                       trans->beta);
                //  if(imag1[i][j] > 127 ) imag1[i][j] = 127;
                // if(imag1[i][j] <  -128 ) imag1[i][j] = -128;
@@ -1184,7 +1886,7 @@ void piramidal_decoding_nonlinear(int level)
      for(j=rry-1,ii=dx >> 1;j>= ry;j--,ii++)
            for(i=rx,jj=dy >> 1;i< rrx;i++,jj++) {
               pixel = (double)imag[ii][jj];
-               imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
+               imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
                                                                       trans->beta);
                //  if(imag1[i][j] > 127 ) imag1[i][j] = 127;
                // if(imag1[i][j] <  -128 ) imag1[i][j] = -128;
@@ -1212,7 +1914,7 @@ void piramidal_decoding_nonlinear(int level)
      for(i=rrx-1,ii=dx >> 1;i>= rx;i--,ii++)
            for(j=rry-1,jj=dy >> 1;j>= ry;j--,jj++) {
               pixel = (double)imag[ii][jj];
-              imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
+              imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
                                                                       trans->beta);
                // if(imag1[i][j] > 127 ) imag1[i][j] = 127;
                // if(imag1[i][j] <  -128 ) imag1[i][j] = -128;
@@ -1226,7 +1928,7 @@ void piramidal_decoding_nonlinear(int level)
      for(i=rx,ii=dx >> 1;i< rrx;i++,ii++)
            for(j=rry-1,jj=dy >> 1;j>= ry;j--,jj++) {
               pixel = (double)imag[ii][jj];
-               imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
+               imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
                                                                       trans->beta);
                //  if(imag1[i][j] > 127 ) imag1[i][j] = 127;
                // if(imag1[i][j] <  -128 ) imag1[i][j] = -128;
@@ -1240,7 +1942,7 @@ void piramidal_decoding_nonlinear(int level)
      for(i=rrx-1,ii=dx >> 1;i>= rx;i--,ii++)
            for(j=ry,jj=dy >> 1;j< rry;j++,jj++) {
               pixel = (double)imag[ii][jj];
-               imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
+               imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
                                                                       trans->beta);
                //  if(imag1[i][j] > 127 ) imag1[i][j] = 127;
                // if(imag1[i][j] <  -128 ) imag1[i][j] = -128;
@@ -1254,7 +1956,7 @@ void piramidal_decoding_nonlinear(int level)
      for(j=ry,ii=dx >> 1;j< rry;j++,ii++)
            for(i=rx,jj=dy >> 1;i< rrx;i++,jj++) {
               pixel = (double)imag[ii][jj];
-               imag1[i][j] = bound(0.5 + pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
+               imag1[i][j] = bound(0.5 +pixel * trans->alfa1 + pixel * pixel *trans->alfa2 +
                                                                       trans->beta);
                //  if(imag1[i][j] > 127 ) imag1[i][j] = 127;
                // if(imag1[i][j] <  -128 ) imag1[i][j] = -128;
@@ -1290,7 +1992,144 @@ void piramidal_decoding_nonlinear(int level)
   }
 
 }
+void piramidal_decoding_LumInv2(int level)
+{
+  int rx,ry,rrx,rry,dx,dy;
+  register int i,j,ii,jj;
+  register PIXEL **imag,**imag1;
+  double pixel;
+  double beta;
+  if(level < 1)
+     return;
 
+  zooming(2.0);   /* Increase resolution */
+
+  imag = image;
+  imag1 = image1;
+
+  printf(" Increasing resolution... \r");
+  fflush(stdout);
+  trans = &fractal_code;
+
+  while(trans->next != NULL)  {
+     trans = trans->next;
+
+     rx=(int)rint(trans->rx);
+     ry=(int)rint(trans->ry);
+     dx=(int)rint(trans->dx);
+     dy=(int)rint(trans->dy);
+     rrx=(int)rint(trans->rrx);
+     rry=(int)rint(trans->rry);
+
+     switch(trans->sym_op) {
+        case IDENTITY   :  
+     for(i=rx,ii=dx >> 1;i< rrx;i++,ii++)
+           for(j=ry,jj=dy >> 1;j< rry;j++,jj++) {
+              pixel = (double)imag[ii][jj];
+              beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case R_ROTATE90 :  
+     for(j=rry-1,ii=dx >> 1;j>= ry;j--,ii++)
+           for(i=rx,jj=dy >> 1;i< rrx;i++,jj++) {
+              pixel = (double)imag[ii][jj];
+              beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case L_ROTATE90 :  
+     for(j=ry,ii=dx >> 1;j< rry;j++,ii++)
+           for(i=rrx-1,jj=dy >> 1;i>= rx;i--,jj++) {
+              pixel = (double)imag[ii][jj];
+              beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case ROTATE180 :  
+     for(i=rrx-1,ii=dx >> 1;i>= rx;i--,ii++)
+           for(j=rry-1,jj=dy >> 1;j>= ry;j--,jj++) {
+              pixel = (double)imag[ii][jj];
+              beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case R_VERTICAL :  
+     for(i=rx,ii=dx >> 1;i< rrx;i++,ii++)
+           for(j=rry-1,jj=dy >> 1;j>= ry;j--,jj++) {
+              pixel = (double)imag[ii][jj];
+              beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case R_HORIZONTAL: 
+     for(i=rrx-1,ii=dx >> 1;i>= rx;i--,ii++)
+           for(j=ry,jj=dy >> 1;j< rry;j++,jj++) {
+              pixel = (double)imag[ii][jj];
+              beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case F_DIAGONAL :  
+     for(j=ry,ii=dx >> 1;j< rry;j++,ii++)
+           for(i=rx,jj=dy >> 1;i< rrx;i++,jj++) {
+              pixel = (double)imag[ii][jj];
+              beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+        case S_DIAGONAL:   
+     for(j=rry-1,ii=dx >> 1;j>= ry;j--,ii++)
+           for(i=rrx-1,jj=dy >> 1;i>= rx;i--,jj++){
+              pixel = (double)imag[ii][jj];
+              beta = trans->rmean - trans->alfa * pixel;
+               imag1[i][j] = bound(0.5 + pixel * trans->alfa + beta);
+              if (isColor) {
+                image_uch[i][j] = trans->um;
+                image_vch[i][j] = trans->vm;
+              }
+           }
+           break;
+     }
+
+  } 
+  swap1(image1, image, PIXEL **)
+
+  if(level > 1) {
+    if(quality)
+       iterative_decoding(0,2,1.0); 
+    piramidal_decoding(level-1);
+  }
+
+}
 void piramidal_decoding(int level)
 {
   int rx,ry,rrx,rry,dx,dy;
