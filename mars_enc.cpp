@@ -323,6 +323,18 @@ int main(int argc, char **argv)
       Coding = Mc_SaupeCoding;
       printf(" Speed-up method: Mc-Saupe\n\n");
       break;
+
+  /* Fisher Classification with modified quatree partition */
+      case Fisher_AdaptiveQuadtree :  
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<24;i++)
+          class_fisher[k][h][i] = NULL;
+
+      AdaptiveIndexing = AdaptiveFisherIndexing;
+      AdaptiveCoding = AdaptiveFisherCoding;
+      printf(" Speed-up method: Fisher Coding with Modified quadtree\n\n");
+      break;
    /*
     case Your_method :                               If you want to try a new 
       classification = YourMethodIndexing;           method you need just to
@@ -333,12 +345,25 @@ int main(int argc, char **argv)
   } 
 
   // contraction(contract,image,0,0);
+  if(isAdaptiveQuadtree){
+    int min_size = (1 << MIN_ADAP_D_BITS);
+    int max_size = (1 << MAX_ADAP_D_BITS);
 
-  for(i=(int) rint(log((double) 2) / log(2.0)); 
+    for(int i = min_size; i <= max_size; ++i){
+      for(int j= min_size; j<= max_size; ++j){
+        AdaptiveIndexing(i,j);
+      }
+    }
+  }else {
+
+    for(i=(int) rint(log((double) 2) / log(2.0)); 
                      i<= (int) rint(log((double) max_size) / log(2.0)); i++) {
        Indexing((int) rint(pow(2.0,(double)i)),i);
   }
 
+  }
+
+  // exit(0);
   bits_per_coordinate_w = ceil(log(image_width  / SHIFT ) / log(2.0));
   bits_per_coordinate_h = ceil(log(image_height / SHIFT ) / log(2.0));
 
@@ -370,20 +395,24 @@ int main(int argc, char **argv)
   /* Header of output file */
 
   if(isNonlinear){
-    pack(2,(long)1,fp);
+    pack(3,(long)1,fp);
     pack(4,(long)N_BITALFA1,fp);
     pack(4,(long)N_BITALFA2,fp);
     pack(4,(long)N_BITBETA2,fp);
   }else if(isLumInv){
-    pack(2,(long)2,fp);
+    pack(3,(long)2,fp);
     pack(4,(long)N_BITALFA,fp);
     pack(4,(long)N_BITRMEAN,fp);
   }else if(isTesting){
-    pack(2,(long)3,fp);
+    pack(3,(long)3,fp);
+    pack(4,(long)N_BITALFA,fp);
+    pack(4,(long)N_BITRMEAN,fp);
+  }else if(isAdaptiveQuadtree){
+    pack(3,(long)4,fp);
     pack(4,(long)N_BITALFA,fp);
     pack(4,(long)N_BITRMEAN,fp);
   } else{
-    pack(2,(long)0,fp);
+    pack(3,(long)0,fp);
     pack(4,(long)N_BITALFA,fp);
     pack(4,(long)N_BITBETA,fp);
   }
@@ -414,6 +443,8 @@ int main(int argc, char **argv)
     LumInv_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
   else if(isTesting)
     testing_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
+  else if(isAdaptiveQuadtree)
+    traverseImage(0,0,virtual_size,virtual_size);
   else
     quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
 

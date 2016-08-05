@@ -132,3 +132,16 @@ void piramidal_decoding_LumInv2(int);
 void piramidal_decoding_nonlinear(int level);
 int quan(double val);
 
+/* adaptive quadtree */
+
+void AdaptiveFisherIndexing(int ,int);
+void adaptiveNewclass(int, int, double**, int*, int*);
+double AdaptiveFisherCoding(int,int,int,int,int *,int *,int *, int *,int *);
+void traverseImage(int,int,int,int);
+void compressRange(int,int,int,int);
+
+void traverseImage_2(int,int,int,int);
+void decompressRange(int,int,int,int);
+double variance_3(int ,int, double ** , int ,int);
+int min_2(int, int);
+int max_2(int, int);

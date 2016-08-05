@@ -45,6 +45,411 @@
 
 FILE *fparam = fopen("param.txt","w");
 
+int quantize(double value, double max, int imax)
+{
+  int ival = (int)(value*imax/max);
+
+  if (ival < 0)
+  {
+    return 0;
+  }
+
+  if (ival > imax)
+  {
+    return imax;
+  }
+
+  return ival;
+}
+
+
+
+double dequantize(double value, double max, double imax)
+{
+  return ((double)(value)*(max)/(double)imax);
+}
+
+
+double AdaptiveFisherCoding(int atx,int aty,int x_size,int y_size,int *xd,int *yd,int *is,
+                                                       int* qalf,int *qbet)
+{
+  int x,y,i,j;
+  int tip_x,tip_y,counter,isometry ;
+  int isom,clas, var_class;
+  int start_first, end_first, fisher_first;
+  int start_second, end_second,fisher_second;
+  double dist,alfa,beta, sd_r, sd_d;
+  double min = 1000000000.0;
+  double sum,s0;
+  double mean,det;
+  double t0 = 0.0;
+  double t1 = 0.0;
+  double t2 = 0.0;
+  double s1 = 0.0;
+  double s2 = 0.0;
+  register double pixel;
+  struct c *pointer;
+  double alfa_min =0.0, beta_min=0.0, error_min = 0.0;
+  tip_y =  y_size;
+  tip_x =   x_size;
+  int qalfa, qbeta;
+     // printf("x_size = %d\t y_size = %d\n",x_size,y_size);
+
+  if(x_size == 1  && y_size == 1) {   /* size = 1 */
+     // printf("x_size = %d\t y_size = %d\n",x_size,y_size);
+     *qbet = (int)image[atx][aty];
+     *qalf = zeroalfa;
+     *xd = 0;
+     *yd = 0;
+     *is = IDENTITY;
+     return 0.0;
+  }
+  // printf("xsize= %d \t ysize = %d\n",x_size,y_size );
+ 
+  s0 = y_size * x_size;
+  for(int y=0;y < y_size;y++){
+    for(int x=0;x < x_size;x++) {
+       pixel = (double)image[aty+y][atx+x];
+       t0 +=  pixel;
+       t2 +=  pixel * pixel;
+       // printf("x= %d \t y = %d\n",x,y );
+       range[y][x] = pixel;
+    }
+  }
+  // sd_r = sqrt(variance_3(x_size,y_size, range, 0,0));
+  mean = t0 / s0;
+      
+  adaptiveNewclass(x_size,y_size,range,&isom,&clas); /* brings the domain in the canonical   */
+  // printf("old Range class  = %d\n",clas);
+  // flips(size,range,flip_range,isom);
+  //var_class = variance_class(size,flip_range);
+  // clas = getL1class(2*x_size,2*y_size,clas);
+  // printf("new range class = %d\n",clas);
+  // if(adaptive_fisher_class[y_size][x_size][clas] == NULL)
+    // printf("adaptive_fisher_class = NULL");
+
+  if (full_first_class) {
+      start_first = 0;
+      end_first   = 24;
+  }
+  else { 
+      start_first = clas;
+      end_first   = clas +1 ;
+  } 
+
+  // if (full_second_class) {
+  //     start_second = 0;
+  //     end_second   = 24; 
+  // }
+  // else { 
+  //     start_second = var_class;
+  //     end_second   = var_class + 1;
+  // } 
+
+  for(fisher_first = start_first; fisher_first < end_first; fisher_first++){ 
+   // for(fisher_second=start_second; fisher_second < end_second; fisher_second++){ 
+     pointer = adaptive_fisher_class[tip_y][tip_x][fisher_first]; 
+     while(pointer != NULL) {
+        // isometry = mapping[isom][pointer->iso];
+        comparisons ++ ;
+        counter ++ ;
+        s1 = pointer->sum;
+        s2 = pointer->sum2;
+        sd_d = pointer->var;
+        t1 = 0.0;
+        i = pointer->ptr_x >> 1;
+        j = pointer->ptr_y >> 1;
+        isometry = 0;
+        sum = 0.0;
+        alfa = beta = 0.0;
+        // printf("contract[214][216] = %u\n",contract[200][256]);
+        switch(isometry) { 
+         case IDENTITY   :  
+                 for(x=0;x< y_size;x++)
+                 for(y=0;y< x_size;y++)
+                     t1 += contract[x+i][y+j]*range[x][y];
+                 break;
+         // case R_ROTATE90 :  
+         //         for(x=0;x< y_size;x++)
+         //         for(y=0;y< x_size;y++)
+         //             t1 += contract[x+i][y+j]*range[y][y_size-x-1];
+         //         break;
+         // case L_ROTATE90 :  
+         //         for(x=0;x< y_size;x++)
+         //         for(y=0;y< x_size;y++)
+         //             t1 += contract[x+i][y+j]*range[x_size-y-1][x];
+         //         break;
+         // case ROTATE180  :  
+         //         for(x=0;x< y_size;x++)
+         //         for(y=0;y< x_size;y++)
+         //             t1 += contract[x+i][y+j]*range[y_size-x-1][x_size-y-1];
+         //         break;
+         // case R_VERTICAL :  
+         //         for(x=0;x< y_size;x++)
+         //         for(y=0;y< x_size;y++)
+         //             t1 += contract[x+i][y+j]*range[x][x_size-y-1];
+         //         break;
+         // case R_HORIZONTAL: 
+         //         for(x=0;x< y_size;x++)
+         //         for(y=0;y< x_size;y++)
+         //             t1 += contract[x+i][y+j]*range[y_size-x-1][y];
+         //         break;
+         // case F_DIAGONAL:   
+         //         for(x=0;x< y_size;x++)
+         //         for(y=0;y< x_size;y++)
+         //             t1 += contract[x+i][y+j]*range[y][x];
+         //         break;
+         // case S_DIAGONAL:   
+         //         for(x=0;x< y_size;x++)
+         //         for(y=0;y< x_size;y++)
+         //             t1 += contract[x+i][y+j]*range[x_size-y-1][y_size-x-1];
+         //         break;
+        }
+        // printf("X size = %d \t Y size = %d\n",x_size,y_size);
+        // printf("R sum = %f\n",t0);
+        // printf("R sum2 = %f\n",t2);
+        // printf("D sum = %f\n",s1);
+        // printf("D sum2 = %f\n",s2);
+
+        double original_beta;
+        /* Compute the scalig factor */
+        det = s2*s0 - s1*s1;
+        if(det == 0.0)
+           alfa = 0.0; 
+        else
+          alfa = (s0*t1 - s1*t0)  / det;
+        if(alfa < 0.0 ) alfa = 0.0;
+        alfa = 0.0;
+        /* Quantize the scalig factor */
+        MAX_ALFA = 1.0;
+        N_BITALFA = 5;
+        N_BITBETA = 7;
+        qalfa = quantize(alfa, MAX_ALFA, (int)(1 << N_BITALFA) - 1 );
+
+        alfa = dequantize(qalfa,MAX_ALFA,(int)(1 << N_BITALFA) - 1 );
+        /* compute offset */
+        beta = (t0 - alfa * s1) / s0;    
+        original_beta = beta;
+        double max_scaled = (double)(alfa * 255.0);
+        qbeta = quantize(beta + max_scaled, max_scaled + 255, (int)(1 << N_BITBETA));
+        // qbeta = 2 * qbeta;
+        beta = dequantize(qbeta,max_scaled + 255, (int)(1 << N_BITBETA));
+        
+        /* Compute the rms distance */
+        // sum = t2 - 2*alfa*t1 -2*beta*t0 + alfa*alfa*s2 +
+        //                       2*alfa*beta*s1 + s0*beta*beta;
+        // dist = sqrt(sum / s0);
+         // printf("alfa = %f\n",alfa);
+         // printf("beta = %f\n",beta);
+
+        sum = alfa * (alfa * s2 - 2*t1) + t2 + 
+                     (double)beta * s0 * ((double)beta - 2.0*original_beta);  
+         // printf("error2 = %f\n",sum);
+        
+        // printf("alfa = %f \t beta = %f\n",alfa,beta);
+
+        /* adaptive error based on range size */
+        // sum = alfa * ( alfa*s2 - 2*t1 ) + t2 + qbeta * s0 * (qbeta - 2*beta);
+        // dist  = sqrt(sum/s0);
+        // printf("error = %f\n",sum);
+        if(sum < min ) {
+            // printf("error2 = %f\n",sum);
+            min = sum;
+            *xd = pointer->ptr_x;
+            *yd = pointer->ptr_y;
+            *is = isometry;
+            *qalf = qalfa;
+            *qbet = qbeta;
+        }
+        pointer = pointer -> next;
+
+     }
+    //}
+  }
+   // printf("%f \t %f \t %f\n",alfa_min,beta_min,error_min);
+        // printf("min=%f\n",min);
+
+   // printf("Zero alfa count = %d\n",zero_alfa_count);
+ return (min) ;
+}
+
+void traverseImage(int atx, int aty, int x_size, int y_size)
+{
+  
+  int s_size;
+  int s_log;
+
+  s_log = (int) log2(min_2(x_size,y_size));
+  s_size = 1 << s_log;
+  // printf("s_size = %d\n",s_size);
+
+  // printf("s_log = %d\n",s_log);
+  if(s_log > MAX_ADAP_R_BITS){
+    traverseImage(atx,          aty,          s_size/2, s_size/2);
+    traverseImage(atx+s_size/2, aty,          s_size/2, s_size/2);
+    traverseImage(atx,          aty+s_size/2, s_size/2, s_size/2);
+    traverseImage(atx+s_size/2, aty+s_size/2, s_size/2, s_size/2);
+  }
+  else{
+    compressRange(atx,aty, x_size, y_size);
+  }
+
+  if(x_size > s_size)
+    traverseImage(atx+s_size,aty,x_size - s_size, y_size);
+  
+  if(y_size > s_size)
+    traverseImage(atx, aty + s_size,s_size, y_size - s_size);
+}
+
+void compressRange(int atx, int aty, int x_size, int y_size)
+{
+  if(atx >= image_height  || aty >= image_width )
+      return;
+
+
+  if(x_size == 0 || y_size == 0)
+    return; 
+
+
+  // printf("isnide compress range:\n");
+  // printf("x_size = %d \t y_size = %d\n",x_size,y_size);
+  int domx,domy,isom,qalfa,qbeta;
+  static int coded = 0;
+  static int oldper = 0;
+  static int newper = 0;
+  static int else_count = 0;
+  double compress,bpp;
+  int bytes;
+  int k;
+  // printf("X size = %d \t Y size = %d \n",x_size,y_size);
+  
+
+  double best_rms;
+  best_rms = AdaptiveCoding(atx,aty,x_size,y_size,&domx,&domy,&isom,&qalfa,&qbeta);
+  // printf("best rms = %f\n",best_rms);
+
+  // exit(0);
+  if(max_2(x_size,y_size) == 1 << (MIN_ADAP_R_BITS)  || best_rms < max_error2 * (double)(x_size * y_size)){
+    // printf("packing bits \n");
+    // printf("transforms = %d \n",transforms);
+    // printf("x_sizse = %d \t y_size = %d\n",x_size,y_size);
+    if(max_2(x_size,y_size) !=  1 << MIN_ADAP_R_BITS)
+      pack(1,(long)1,fp);
+
+    // if(abs(qalfa - zeroalfa) <= zero_threshold) {
+    //     qbeta = best_beta(atx,aty,x_size,0.0);
+    //     qalfa = zeroalfa;
+    // }
+    pack(N_BITALFA, (long)qalfa, fp);
+    pack(N_BITBETA, (long)qbeta, fp);
+    // if(isColor){
+    //   double um = u_mean(x_size,y_size,atx,aty);
+    //   double vm = v_mean(x_size,y_size,atx,aty);
+    //   pack(8,(long)um,fp);
+    //   pack(8,(long)vm,fp);
+    // }
+    // printf("qalfa = %d\n",qalfa);
+    zero_alfa_transform ++;
+    if(qalfa != zeroalfa) {
+       zero_alfa_transform --;
+    }
+       pack(3, (long)isom, fp);
+       pack(bits_per_coordinate_h,(long)(domx / SHIFT),fp);
+       pack(bits_per_coordinate_w,(long)(domy / SHIFT),fp);
+    
+
+    transforms ++;
+    // printf("transforms = %d\r",transforms);
+    coded += x_size * y_size ;
+    newper = (int) (((double) coded / (image_width * image_height)) * 100);
+    if(newper > oldper) {
+       bytes = pack(-2,(long)0,fp);
+       compress =(double) coded / (double)bytes;
+       bpp      = 8.0 /compress;
+       printf(" %d %% Coded, Compression %f:1, bpp %f\r", 
+                                  newper,compress,bpp);
+       oldper = newper;
+       fflush(stdout);
+    }
+  }
+  else{
+      // else_count++;
+      // if(else_count == 1)
+      // printf("x size = %d \t y size = %d\n",x_size,y_size);
+
+    // if(x_size == 1 || y_size == 1){ 
+    //   printf("x size = %d \t y size = %d\n",x_size,y_size);
+    //    exit(0);
+    // }  
+    pack(1,(long)0,fp);
+    int i,j,Rp, Cp1, Cp2, x1,x2,x3,x4,y1,y2 ,vmax1,vmax2,hmax,h,v1,v2;
+    
+    hmax=vmax1=vmax2=0;
+ 
+
+    Cp1=Cp2=atx;
+    Rp=aty;
+    for(j=aty;j<aty+y_size-1;j++)
+    {
+          y1=y2=0;
+          for(i=atx;i<atx+x_size;i++)
+          {
+                y1=y1+image[j][i];
+                y2=y2+image[j+1][i];
+          }
+          h=(min_2(j-aty+1,y_size-j+aty-1)*abs(y1-y2));
+          if(h>hmax)
+          {
+                hmax=h;         
+                Rp=j;
+          }
+    }
+    for(i=atx;i<atx+x_size-1;i++)
+    {
+          x1=x2=0;
+          for(j=aty;j<aty+y_size;j++)
+          {
+                x1=x1+image[j][i];
+                x2=x2+image[j][i+1];
+          }
+          v1=(min_2(i-atx+1,x_size-i+atx-1)*abs(x1-x2));
+          if(v1>vmax1)
+          {
+                vmax1=v1;
+                Cp1=i;
+          }
+          // x3=x4=0;
+          // for(j=Rp;j<aty+y_size;j++)
+          // {
+          //       x3=x3+image[j][i];
+          //       x3=x4+image[j][i+1];
+          // }
+          // v2=(min_2(i-atx+1,x_size-i+atx-1)*abs(x3-x4));
+          // if(v2>vmax2)
+          // {
+          //       vmax2=v2;
+          //       Cp2=i;
+          // }
+    }
+   
+      pack(3,(long)Rp-aty+1,fp);
+      pack(3,(long)Cp1-atx+1,fp);
+   //   pack(3,(long)Cp2-atx+1,fp);
+     
+      // printf("y_size1 =%d\n",Rp-aty+1,fp);
+      // printf("x_size1=%d\n",Cp1-atx+1,fp);
+      // printf("",Cp2-atx+1,fp);
+     
+
+      compressRange(atx,   aty,   Cp1-atx+1,        Rp-aty+1);
+      compressRange(Cp1+1, aty,   atx+x_size-Cp1-1, Rp-aty+1);
+      compressRange(atx,   Rp+1,  Cp1-atx+1,        aty+y_size-Rp-1);
+      compressRange(Cp1+1, Rp+1,  atx+x_size-Cp1-1, aty+y_size-Rp-1);
+    
+  }
+}
+
+
 double Saupe_FisherCoding(int atx,int aty,int size,int *xd,
                                           int *yd,int *is, int* qalf,int *qbet)
 {

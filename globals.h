@@ -118,6 +118,8 @@ struct t_node {
            double rrx;
            double rry;
            short size;
+           int x_size;
+           int y_size;
            double dx;
            double dy;
            short um;  // for color image: uchannel mean
@@ -240,3 +242,15 @@ EXTERN int isNonlinear INIT(=0);
 EXTERN int isTesting INIT(=0);
 EXTERN int isLumInv INIT(=0);
 EXTERN int zero_alfa_count INIT(=0);
+
+/* adaptive quadtree */
+EXTERN void (*AdaptiveIndexing) (int, int);
+EXTERN double (*AdaptiveCoding) (int, int, int, int , int*, int*, int*, int*, int*);
+EXTERN int isAdaptiveQuadtree INIT(=0);
+EXTERN int MIN_ADAP_D_BITS INIT(= 0);
+EXTERN int MAX_ADAP_D_BITS INIT(= 3);
+EXTERN int MIN_ADAP_R_BITS INIT(= 0);
+EXTERN int MAX_ADAP_R_BITS INIT(= 3);
+EXTERN int N_L1_CLASSES INIT(= 24);
+EXTERN struct c *adaptive_fisher_class[32][32][24];
+EXTERN double max_error2 INIT(= 100);

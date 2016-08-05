@@ -75,6 +75,7 @@
 #define Entropy_based 11
 #define CoVar 12
 #define adaptive_search 13
+#define Fisher_AdaptiveQuadtree 14
 
 
 #define TWOPI 6.2831853 

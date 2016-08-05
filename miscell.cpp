@@ -141,7 +141,11 @@ void getopt_enc(int argc, char **argv)
                          break;
                 }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'V')){
                          method = CoVar;
-                         break;                  
+                         break;
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'Q')){
+                         method = Fisher_AdaptiveQuadtree;
+                         isAdaptiveQuadtree = 1;
+                         break;                    
                 }else {
                          method = Fisher;        
                          break;

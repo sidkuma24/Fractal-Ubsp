@@ -47,9 +47,125 @@
 #include "def.h"
 #include "globals.h"
 #include "prot.h"
-#include "haar.h"
+// #include "haar.h"
+
+void adaptiveNewclass(int x_size, int y_size, double **block, 
+                       int *isom, int *clas)
+{
+  double a[4] = {0.0,0.0,0.0,0.0};
+  int delta[3] = {6,2,1};
+  int class1  = 1;
+
+  if(x_size > 0 && y_size >0){
+  for(int i=0; i < y_size/2; i++){
+    for(int j=0; j < x_size/2; j++){
+      a[0] += block[i][j];
+      a[1] += block[i][j+x_size/2];
+      a[2] += block[i+y_size/2][j];
+      a[3] += block[i+y_size/2][j+x_size/2];
+     
+    }
+  }
+ }
+ for(int i=0; i <= 2; ++i){
+  for(int j=i+1; j<=3; ++j){
+    if(a[i] < a[j])
+      class1 = class1 + delta[i];
+  }
+ }
+  
+ if(class1 > N_L1_CLASSES - 1)
+  class1 = N_L1_CLASSES - 1;
+ 
+ if(class1 < 0)
+  class1 = 0;
+
+ *clas = class1;
+
+}
+
+void AdaptiveFisherIndexing(int x_size,int y_size)
+{
+
+  int i,j,k,h;
+  int count = 0;
+  int iso, clas, var_class;
+  double sum,sum2,sum3,sum4;
+  double **domi,**flip_domi;
+  register double pixel;
+  register int x,y;
+  struct c *node;
+  int x_s = x_size;
+  int y_s = y_size;
+  // FisherIndexing_2(x_size,(int)log2(x_size));
+  //todo : check images dimensions in mars_enc
+ // DOMAIN_X_BITS = (int)log2(x_size);
+  //DOMAIN_Y_BITS = (int)log2(y_size);
+  // printf("allocating memory\n");
+  matrix_allocate(domi,x_size,y_size,double)
+  matrix_allocate(flip_domi,x_size,y_size,double)
+  int class_count[24] = {0};
+  // printf("memory allocated\n");
+  for(i=0;i< image_height - 2 * y_size +1 ;i+= SHIFT) {
+    for(j=0;j< image_width - 2 * x_size +1 ;j+= SHIFT ) {
+      count ++;
+      k=0;
+      sum  = 0.0;
+      sum2 = 0.0;
+      
+      for(y=0;y< y_size;y++)
+      for(x=0;x< x_size;x++) {
+        pixel = contract[y+(i>>1)][x+(j>>1)];
+        sum  += pixel;
+        sum2 += pixel * pixel;
+        domi[y][x] = pixel;
+      }
+      
+                                   /* Compute the symmetry operation which */
+      adaptiveNewclass(x_size,y_size,domi,&iso,&clas); /* brings the domain in the canonical   */
+      
+     // adaptiveFlips(x_size,y_size,domi,flip_domi,iso); 
+       
+      //var_class = adaptiveVariance_class(x_size,y_size,flip_domi);
+      iso = 0 ;//not considering rotations yet, to be implemented in the future
+      node = (struct c *) malloc(sizeof(struct c));
+      node -> ptr_x = i;
+      node -> ptr_y = j;
+      node -> sum   = sum;
+      node -> sum2  = sum2;
+      node -> sum3  = sum3;
+      node -> sum4  = sum4;
+      node -> iso  = iso;
+      //node -> var = variance_3(x_size,y_size,domi,0,0);
+      node -> next  = adaptive_fisher_class[y_s][x_s][clas];
+      adaptive_fisher_class[y_s][x_s][clas] = node;
+      
+    }
+    printf(" Classification (Fisher) domain (%dx%d)  %d \r",y_size,x_size,count) ;
+    fflush(stdout);
+
+  }
+
+  for(i=0;i<24;i++)    /* Find a not empty class */
+    if(adaptive_fisher_class[y_s][x_s][i] != NULL)
+         goto out_loops;
 
 
+  out_loops:
+
+  for(k=0;k<24;k++)  /* Make sure no class is empty */
+    if(adaptive_fisher_class[y_s][x_s][k] == NULL)
+      adaptive_fisher_class[y_s][x_s][k] = adaptive_fisher_class[y_s][x_s][i];
+
+
+  printf("\n");
+  // for(int i = 0; i < 24; i++){
+  //   printf("Class %d count = %d\n",i,class_count[i]);
+  // }
+
+  free(domi[0]);
+  free(flip_domi[0]);
+}
 
 void ComputeMc(double **block,int size,double *x,double *y,int s)
 {
@@ -735,122 +851,122 @@ void HurtgenIndexing(int size,int s)
 
 }
 
-void haar_2d ( int m, int n, double u[] )
+// void haar_2d ( int m, int n, double u[] )
 
-/******************************************************************************/
-/*
-  Purpose:
+// /******************************************************************************/
+// /*
+//   Purpose:
 
-    HAAR_2D computes the Haar transform of an array.
+//     HAAR_2D computes the Haar transform of an array.
 
-  Discussion:
+//   Discussion:
 
-    For the classical Haar transform, M and N should be a power of 2.
-    However, this is not required here.
+//     For the classical Haar transform, M and N should be a power of 2.
+//     However, this is not required here.
 
-  Licensing:
+//   Licensing:
 
-    This code is distributed under the GNU LGPL license.
+//     This code is distributed under the GNU LGPL license.
 
-  Modified:
+//   Modified:
 
-    06 March 2014
+//     06 March 2014
 
-  Author:
+//   Author:
 
-    John Burkardt
+//     John Burkardt
 
-  Parameters:
+//   Parameters:
 
-    Input, int M, N, the dimensions of the array.
+//     Input, int M, N, the dimensions of the array.
 
-    Input/output, double U[M*N], the array to be transformed.
-*/
-{
-  int i;
-  int j;
-  int k;
-  double s;
-  double *v;
+//     Input/output, double U[M*N], the array to be transformed.
+// */
+// {
+//   int i;
+//   int j;
+//   int k;
+//   double s;
+//   double *v;
 
-  s = sqrt ( 2.0 );
+//   s = sqrt ( 2.0 );
 
-  v = ( double * ) malloc ( m * n * sizeof ( double ) );
+//   v = ( double * ) malloc ( m * n * sizeof ( double ) );
 
-  for ( j = 0; j < n; j++ )
-  {
-    for ( i = 0; i < m; i++ )
-    {
-      v[i+j*m] = u[i+j*m];
-    }
-  }
-/*
-  Determine K, the largest power of 2 such that K <= M.
-*/
-  k = 1;
-  while ( k * 2 <= m )
-  {
-    k = k * 2;
-  }
-/*
-  Transform all columns.
-*/
-  while ( 1 < k )
-  {
-    k = k / 2;
+//   for ( j = 0; j < n; j++ )
+//   {
+//     for ( i = 0; i < m; i++ )
+//     {
+//       v[i+j*m] = u[i+j*m];
+//     }
+//   }
+// /*
+//   Determine K, the largest power of 2 such that K <= M.
+// */
+//   k = 1;
+//   while ( k * 2 <= m )
+//   {
+//     k = k * 2;
+//   }
 
-    for ( j = 0; j < n; j++ )
-    {
-      for ( i = 0; i < k; i++ )
-      {
-        v[i  +j*m] = ( u[2*i+j*m] + u[2*i+1+j*m] ) / s;
-        v[k+i+j*m] = ( u[2*i+j*m] - u[2*i+1+j*m] ) / s;
-      }
-    }
-    for ( j = 0; j < n; j++ )
-    {
-      for ( i = 0; i < 2 * k; i++ )
-      {
-        u[i+j*m] = v[i+j*m];
-      }
-    }
-  }
-/*
-  Determine K, the largest power of 2 such that K <= N.
-*/
-  k = 1;
-  while ( k * 2 <= n )
-  {
-    k = k * 2;
-  }
-/*
-  Transform all rows.
-*/
-  while ( 1 < k )
-  { 
-    k = k / 2;
+//   Transform all columns.
 
-    for ( j = 0; j < k; j++ )
-    {
-      for ( i = 0; i < m; i++ )
-      {
-        v[i+(  j)*m] = ( u[i+2*j*m] + u[i+(2*j+1)*m] ) / s;
-        v[i+(k+j)*m] = ( u[i+2*j*m] - u[i+(2*j+1)*m] ) / s;
-      }
-    }
+//   while ( 1 < k )
+//   {
+//     k = k / 2;
 
-    for ( j = 0; j < 2 * k; j++ )
-    {
-      for ( i = 0; i < m; i++ )
-      {
-        u[i+j*m] = v[i+j*m];
-      }
-    }
-  }
-  free ( v );
+//     for ( j = 0; j < n; j++ )
+//     {
+//       for ( i = 0; i < k; i++ )
+//       {
+//         v[i  +j*m] = ( u[2*i+j*m] + u[2*i+1+j*m] ) / s;
+//         v[k+i+j*m] = ( u[2*i+j*m] - u[2*i+1+j*m] ) / s;
+//       }
+//     }
+//     for ( j = 0; j < n; j++ )
+//     {
+//       for ( i = 0; i < 2 * k; i++ )
+//       {
+//         u[i+j*m] = v[i+j*m];
+//       }
+//     }
+//   }
+// /*
+//   Determine K, the largest power of 2 such that K <= N.
+// */
+//   k = 1;
+//   while ( k * 2 <= n )
+//   {
+//     k = k * 2;
+//   }
+// /*
+//   Transform all rows.
+// */
+//   while ( 1 < k )
+//   { 
+//     k = k / 2;
 
-  return;
-}
+//     for ( j = 0; j < k; j++ )
+//     {
+//       for ( i = 0; i < m; i++ )
+//       {
+//         v[i+(  j)*m] = ( u[i+2*j*m] + u[i+(2*j+1)*m] ) / s;
+//         v[i+(k+j)*m] = ( u[i+2*j*m] - u[i+(2*j+1)*m] ) / s;
+//       }
+//     }
+
+//     for ( j = 0; j < 2 * k; j++ )
+//     {
+//       for ( i = 0; i < m; i++ )
+//       {
+//         u[i+j*m] = v[i+j*m];
+//       }
+//     }
+//   }
+//   free ( v );
+
+//   return;
+// }
 
 void findMaxEnt(int size, int s)
 {

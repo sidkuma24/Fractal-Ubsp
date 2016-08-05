@@ -4,8 +4,8 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 
 find_package( OpenCV REQUIRED )
 add_definitions(-std=c++11)
-add_executable( fcom mars_enc.cpp image_io.cpp index_func.cpp coding_func.cpp miscell.cpp split_func.cpp nn_search.cpp haar.c)
-add_executable( fdcom mars_dec.cpp image_io.cpp index_func.cpp coding_func.cpp miscell.cpp split_func.cpp nn_search.cpp haar.c)
+add_executable( fcom mars_enc.cpp image_io.cpp index_func.cpp coding_func.cpp miscell.cpp split_func.cpp nn_search.cpp)
+add_executable( fdcom mars_dec.cpp image_io.cpp index_func.cpp coding_func.cpp miscell.cpp split_func.cpp nn_search.cpp )
 add_executable( pproc pproc.cpp image_io.cpp index_func.cpp coding_func.cpp miscell.cpp split_func.cpp nn_search.cpp)
 add_executable( pproc_dec pproc_dec.cpp image_io.cpp index_func.cpp coding_func.cpp miscell.cpp split_func.cpp nn_search.cpp)
 

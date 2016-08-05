@@ -65,7 +65,7 @@ int main(int argc, char **argv)
       fatal("\n Can't open input file");
 
   unpack(-2,input);    /*Initialize unpack */
-  int type    = (int)unpack(2,input);
+  int type    = (int)unpack(3,input);
   
   switch(type){
     case 0:
@@ -89,6 +89,12 @@ int main(int argc, char **argv)
     case 3:
       isTesting = 1;
       printf("testing new method with Fisher coding\n");
+      N_BITALFA = (int)unpack(4,input);
+      N_BITRMEAN = (int)unpack(4,input);
+      break;
+    case 4:
+      isAdaptiveQuadtree = 1;
+      printf("Fisher decoding with adaptive quadtree\n");
       N_BITALFA = (int)unpack(4,input);
       N_BITRMEAN = (int)unpack(4,input);
       break;
@@ -128,6 +134,8 @@ int main(int argc, char **argv)
     read_transformations_LumInv(0,0,virtual_size);
   }else if(isTesting){
     read_transformations_testing(0,0,virtual_size);
+  }else if(isAdaptiveQuadtree){
+    traverseImage_2(0,0,virtual_size,virtual_size);
   }else{
     read_transformations(0,0,virtual_size);
 
@@ -274,6 +282,109 @@ int main(int argc, char **argv)
 }
 
 
+void traverseImage_2(int atx, int aty, int x_size, int y_size)
+{
+  
+  int s_size;
+  int s_log;
+
+  s_log = (int) log2(min_2(x_size,y_size));
+  s_size = 1 << s_log;
+  // printf("s_size = %d\n",s_size);
+
+  // printf("s_log = %d\n",s_log);
+  if(s_log > MAX_ADAP_R_BITS){
+    traverseImage_2(atx,          aty,          s_size/2, s_size/2);
+    traverseImage_2(atx+s_size/2, aty,          s_size/2, s_size/2);
+    traverseImage_2(atx,          aty+s_size/2, s_size/2, s_size/2);
+    traverseImage_2(atx+s_size/2, aty+s_size/2, s_size/2, s_size/2);
+  }
+  else{
+    decompressRange(atx,aty, x_size, y_size);
+  }
+
+  if(x_size > s_size)
+    traverseImage_2(atx+s_size,aty,x_size - s_size, y_size);
+  
+  if(y_size > s_size)
+    traverseImage_2(atx, aty + s_size,s_size, y_size - s_size);
+}
+
+void decompressRange(int atx,int aty,int x_size,int y_size)
+{ 
+  int qalfa,qbeta;
+  double alfa,beta, um,vm;
+  int ddx, ddy;
+
+
+  if(atx >= image_height  || aty >= image_width )
+      return;
+  
+  if(x_size==0||y_size==0)
+    return;
+
+  if(max_2(x_size,y_size) == 1 << MIN_ADAP_R_BITS || (int)unpack(1,input) == 1){
+    transforms++;
+    trans->next = (struct t_node *) malloc(sizeof(struct t_node ));
+    trans       = trans->next; 
+    trans->next = NULL;
+    qalfa       = (int)unpack(N_BITALFA,  input);
+    qbeta       = (int)unpack(N_BITBETA,  input);
+    // if(isColor){
+    //   um = (int)unpack(8,input);
+    //   vm = (int)unpack(8,input);
+    // }
+
+    /* Compute alfa from the quantized value */
+    alfa = (double) qalfa / (double)(1 << N_BITALFA) * (MAX_ALFA) ;
+    
+    /* Compute beta from the quantized value */
+    beta = (double) qbeta/(double)((1 << N_BITBETA)-1)* ((1.0+fabs(alfa)) * 255);
+    if (alfa > 0.0) beta  -= alfa * 255;
+       
+    trans->alfa = alfa;
+    trans->beta = beta;
+    // if(isColor){
+    //   trans->um = um;
+    //   trans->vm = vm;
+    // }
+    // if(qalfa != zeroalfa) {      
+        trans-> sym_op = (int)unpack(3, input);
+        ddx = (int)unpack(bits_per_coordinate_h,input);
+        ddy = (int)unpack(bits_per_coordinate_w,input);
+        trans->dx = SHIFT * ddx;
+        trans->dy = SHIFT * ddy;
+    //    // printf("%d %d\n", ddx, ddy);
+    // } else {
+    //     trans-> sym_op = 0;
+    //     trans-> dx  = 0;
+    //     trans-> dy = 0;
+    // }
+    trans->rx = atx;
+    trans->ry = aty;
+    trans->x_size = x_size;
+    trans->y_size = y_size;
+    trans->rrx = atx + x_size;
+    trans->rry = aty + y_size;
+
+  } else {
+    int l1,l2;
+    //  printf("%s\n","in adaptive part");
+    l1 = (int)unpack(3,input);
+    l2 = (int)unpack(3,input);
+     
+     // l1 = 1 << (int)log2(l1);   
+     // l2 = 1 << (int)log2(l2);   
+     // l3= 1 << (int)log2(l3);   
+    
+    decompressRange(atx,      aty,      l2,      l1);
+    decompressRange(atx+l2,  aty,      x_size-l2, l1);
+    decompressRange(atx,      aty+l1,  l2,      y_size-l1);
+    decompressRange(atx+l2,  aty+l1,   x_size-l2, y_size-l1);
+  } 
+}
+
+
 void zooming(double scalefactor)
 {
   trans = &fractal_code;
@@ -288,6 +399,9 @@ void zooming(double scalefactor)
      trans->dy   *= scalefactor;
   }
 }
+
+
+
 void read_transformations_testing(int atx,int aty,int size)
 { 
   int qalfa,qrmean;
@@ -1409,7 +1523,7 @@ void iterative_decoding(int level,int n_iter,double zoo)
         dy=(int)rint(trans->dy);
         rrx=(int)rint(trans->rrx);
         rry=(int)rint(trans->rry);
-
+        trans->sym_op = 0;
         switch(trans->sym_op) {     
          case IDENTITY   : 
             for(i=rx,ii=dx;i< rrx;i++,ii+=2)
