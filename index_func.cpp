@@ -38,10 +38,94 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
+# include <cstdlib>
+# include <iostream>
+# include <iomanip>
+# include <cmath>
 
 #include "def.h"
 #include "globals.h"
 #include "prot.h"
+#include "haar.h"
+
+
+void HV_FisherIndexing(int x_size,int y_size)
+{
+  int i,j,k,h;
+  int count = 0;
+  int iso, clas, var_class;
+  double sum,sum2;
+  double **domi,**flip_domi;
+  register double pixel;
+  register int x,y;
+  struct c *node;
+
+  matrix_allocate(domi,x_size,y_size,double)
+  // matrix_allocate(flip_domi,x_size,y_size,double)
+  // int class_count[24] = {0};
+
+  for(i=0;i< image_height - 2 * y_size +1 ;i+= SHIFT) {
+    for(j=0;j< image_width - 2 * x_size +1 ;j+= SHIFT ) {
+      count ++;
+      k=0;
+      sum  = 0.0;
+      sum2 = 0.0;
+   
+      for(y=0;y< y_size;y++)
+      for(x=0;x< x_size;x++) {
+        pixel = contract[y+(i>>1)][x+(j>>1)];
+        sum  += pixel;
+        sum2 += pixel * pixel;
+        domi[y][x] = pixel;
+      }
+      // printf("x size = %d \t y size = %d \n",x_size,y_size);
+      
+                                   /* Compute the symmetry operation which */
+      adaptiveNewclass_2(x_size,y_size,domi,&iso,&clas); /* brings the domain in the canonical   */
+                                      /* orientation                          */
+      // flips(size,domi,flip_domi,iso); 
+      // printf("class = %d\n\n",clas);
+      // var_class = variance_class(size,flip_domi);
+
+      node = (struct c *) malloc(sizeof(struct c));
+      node -> ptr_x = i;
+      node -> ptr_y = j;
+      node -> sum   = sum;
+      node -> sum2  = sum2;
+      node -> iso  = iso;
+      node -> var = variance_3(x_size,y_size,domi,0,0);
+      node -> next  = HV_fisher_class[y_size][x_size][clas];
+      HV_fisher_class[y_size][x_size][clas] = node;
+      // class_count[var_class]++;
+      
+    }
+    printf(" Classification (Fisher) domain (%dx%d)  %d \r",x_size,y_size,count) ;
+    fflush(stdout);
+
+  }
+
+  for(j=0;j<24;j++)
+    if(HV_fisher_class[y_size][x_size][j] != NULL)
+         goto out_loops;
+
+
+  out_loops:
+
+  for(h=0;h<24;h++)
+    if( HV_fisher_class[y_size][x_size][h] == NULL){
+      // printf("Current class is null\n");
+      HV_fisher_class[y_size][x_size][h] = HV_fisher_class[y_size][x_size][j];
+    }
+
+  printf("\n");
+  // for(int i = 0; i < 24; i++){
+  //   printf("Class %d count = %d\n",i,class_count[i]);
+  // }
+
+  free(domi[0]);
+  // free(flip_domi[0]);
+}
 
 
 void ComputeMc(double **block,int size,double *x,double *y,int s)
@@ -79,7 +163,8 @@ void ComputeMc(double **block,int size,double *x,double *y,int s)
 int match(int *iso_1)
 {
   int i,j,flag;
-
+  static int count;
+  // printf("iso_1[0] = %d\t count = %d\n",iso_1[0],count++);
   for(j=0; j< 24; j++) {
     flag =1;
     for(i=0; i< 4; i++)
@@ -91,6 +176,126 @@ int match(int *iso_1)
   }
   fatal("\n Error");
   return(-1);
+}
+
+
+int EnergyCoeff_class(int size,double **block)
+{
+  int i,j;
+  double **n_block;
+  matrix_allocate(n_block,size,size,double);
+  double sum2 = 0.0;
+  double sum = 0.0;
+  double mean2 = 0.0, energy_coef = 0.0;
+  double mean = 0.0,var;
+  int atx = 0, aty = 0;
+
+  for(i=0;i<size;i++){
+  for(j=0;j<size;j++) {
+     sum2 += block[i][j] * block[i][j];
+     sum  += block[i][j];
+     // printf("%f\t",block[i][j]);
+
+  }
+  // printf("\n");
+  }
+
+  mean = sum / (size * size);
+  mean2 = sum2 / (size * size);
+  var = mean2 - mean * mean;
+  // printf("sum= %f\n",sum);
+  // printf("size= %d\n",size);
+  // printf("\n");
+  // printf("\n");
+
+
+  for(i=0;i<size;i++){
+    for(j=0;j<size;j++){
+      // double det = sqrt(var * size *size);
+      double det = sqrt(var);
+      if(det != 0 )
+        n_block[i][j] = (block[i][j] - mean) / det; 
+      else
+        n_block[i][j] = 0;
+      // printf("%f\t",n_block[i][j]);
+    }
+    // printf("\n");
+  }
+   
+  double *vec = new double[size * size];
+  for(int x=0; x<size; x++){
+    for(int y=0; y<size; y++){
+        vec[x+y*size] = n_block[x][y];   
+    }
+  }
+  //haar_2d(size,size,vec);
+  double **t_n_block ;
+  double *domain_vec = new double[size*size];
+  matrix_allocate(t_n_block,size,size,double);
+  for(int x=0; x<size; x++){
+    for(int y=0; y<size; y++){
+
+        // n_block[x][y] = domain_vec[x+y*size];  
+        // energy_coef += (n_block[x][y] * n_block[x][y]) ; 
+        energy_coef += abs(n_block[x][y]) ; 
+
+    }
+  }
+   printf("%f \n",energy_coef);
+   printf("\n");
+   printf("\n");
+
+  // printf("ecof= %f\n",energy_coef);
+  int ecof = (int)floor(energy_coef);
+  return ecof;
+}
+
+int std_class(int size, double **block)
+{
+  double std = sqrt(variance_2(size,block,0,0));
+  return floor(std);
+}
+
+int ent_class(int size, double **block)
+{
+  double ent = entropy_2(size,block,0,0);
+  if(ent < 0) ent = 0.0;
+  return ((int)floor(ent));
+}
+
+int adaptiveVariance_class(int x_size,int y_size,double **block)
+{
+  int i,j;
+  double a[4] = {0.0,0.0,0.0,0.0};
+  int order[4];
+
+  a[0] =  variance_3(x_size/2,y_size/2, block, 0, 0);
+  a[1] =  variance_3(x_size/2,y_size/2, block, 0, y_size/2);
+  a[2] =  variance_3(x_size/2,y_size/2, block, x_size/2, 0);
+  a[3] =  variance_3(x_size/2,y_size/2, block,x_size/2, y_size/2);
+
+  for (i=0; i<4; ++i)  order[i] = i ;
+
+  for (i=2; i>=0; --i)
+  for (j=0; j<=i; ++j)
+     if (a[j]<a[j+1]) {
+       swap1(order[j], order[j+1],int)
+       swap1(a[j], a[j+1],double)
+     }
+
+   int flag;
+
+  for(int j=0; j< 24; j++) {
+    flag =1;
+    for(int i=0; i< 4; i++)
+      if(order[i] != ordering[j][i]) {
+        flag = 0;
+        break;
+      }
+    if (flag == 1) return j;
+  }
+  fatal("\n error occured");
+  return (-1);
 }
 
 
@@ -149,6 +354,71 @@ int hurtgen_class(int size,double **block)
   return clas;
 }
 
+void adaptiveNewclass_2(int x_size, int y_size, double **block, 
+                       int *isom, int *clas)
+{
+  double a[4] = {0.0,0.0,0.0,0.0};
+  int delta[3] = {6,2,1};
+  int class1  = 1;
+
+  if(x_size > 0 && y_size >0){
+  for(int i=0; i < y_size/2; i++){
+    for(int j=0; j < x_size/2; j++){
+      a[0] += block[i][j];
+      a[1] += block[i][j+x_size/2];
+      a[2] += block[i+y_size/2][j];
+      a[3] += block[i+y_size/2][j+x_size/2];
+     
+    }
+  }
+ }
+ for(int i=0; i <= 2; ++i){
+  for(int j=i+1; j<=3; ++j){
+    if(a[i] < a[j])
+      class1 = class1 + delta[i];
+  }
+ }
+  
+ if(class1 > N_L1_CLASSES - 1)
+  class1 = N_L1_CLASSES - 1;
+ 
+ if(class1 < 0)
+  class1 = 0;
+
+ *clas = class1;
+
+}
+
+void adaptiveNewclass(int x_size, int y_size, double **block, 
+                       int *isom, int *clas)
+{
+  double a[4] = {0.0,0.0,0.0,0.0};
+  int order[4] = {0,1,2,3};
+  
+  if(x_size > 0 && y_size >0){
+  for(int i=0; i < y_size/2; i++){
+    for(int j=0; j < x_size/2; j++){
+      a[0] += block[i][j];
+      a[1] += block[i][j+x_size/2];
+      a[2] += block[i+y_size/2][j];
+      a[3] += block[i+y_size/2][j+x_size/2];
+     
+    }
+  }
+ }
+
+ for(int i=2; i>=0; i--){
+  for(int j=0; j<=i; j++){
+    if(a[j] < a[j+1]){
+      swap1(order[j],order[j+1],int);
+      swap1(a[j],a[j+1],double);
+    }
+  }
+ }
+  int index = match(order);
+  *isom = ordering[index][4];
+  *clas = ordering[index][5];
+}
 
 void newclass(int size,double **block,int *isom,int *clas)
 {
@@ -644,14 +914,175 @@ void HurtgenIndexing(int size,int s)
 
 }
 
+void haar_2d ( int m, int n, double u[] )
 
+/******************************************************************************/
+/*
+  Purpose:
 
-void FisherIndexing(int size,int s)
+    HAAR_2D computes the Haar transform of an array.
+
+  Discussion:
+
+    For the classical Haar transform, M and N should be a power of 2.
+    However, this is not required here.
+
+  Licensing:
+
+    This code is distributed under the GNU LGPL license.
+
+  Modified:
+
+    06 March 2014
+
+  Author:
+
+    John Burkardt
+
+  Parameters:
+
+    Input, int M, N, the dimensions of the array.
+
+    Input/output, double U[M*N], the array to be transformed.
+*/
+{
+  int i;
+  int j;
+  int k;
+  double s;
+  double *v;
+
+  s = sqrt ( 2.0 );
+
+  v = ( double * ) malloc ( m * n * sizeof ( double ) );
+
+  for ( j = 0; j < n; j++ )
+  {
+    for ( i = 0; i < m; i++ )
+    {
+      v[i+j*m] = u[i+j*m];
+    }
+  }
+/*
+  Determine K, the largest power of 2 such that K <= M.
+*/
+  k = 1;
+  while ( k * 2 <= m )
+  {
+    k = k * 2;
+  }
+/*
+  Transform all columns.
+*/
+  while ( 1 < k )
+  {
+    k = k / 2;
+
+    for ( j = 0; j < n; j++ )
+    {
+      for ( i = 0; i < k; i++ )
+      {
+        v[i  +j*m] = ( u[2*i+j*m] + u[2*i+1+j*m] ) / s;
+        v[k+i+j*m] = ( u[2*i+j*m] - u[2*i+1+j*m] ) / s;
+      }
+    }
+    for ( j = 0; j < n; j++ )
+    {
+      for ( i = 0; i < 2 * k; i++ )
+      {
+        u[i+j*m] = v[i+j*m];
+      }
+    }
+  }
+/*
+  Determine K, the largest power of 2 such that K <= N.
+*/
+  k = 1;
+  while ( k * 2 <= n )
+  {
+    k = k * 2;
+  }
+/*
+  Transform all rows.
+*/
+  while ( 1 < k )
+  { 
+    k = k / 2;
+
+    for ( j = 0; j < k; j++ )
+    {
+      for ( i = 0; i < m; i++ )
+      {
+        v[i+(  j)*m] = ( u[i+2*j*m] + u[i+(2*j+1)*m] ) / s;
+        v[i+(k+j)*m] = ( u[i+2*j*m] - u[i+(2*j+1)*m] ) / s;
+      }
+    }
+
+    for ( j = 0; j < 2 * k; j++ )
+    {
+      for ( i = 0; i < m; i++ )
+      {
+        u[i+j*m] = v[i+j*m];
+      }
+    }
+  }
+  free ( v );
+
+  return;
+}
+
+void findMaxEnt(int size, int s)
+{
+  double pixel = 0.0, block_ent = 0.0, max_ent = 0.0;
+  double **domi2;
+  matrix_allocate(domi2,size,size,double);
+  
+    for(int i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
+    for(int j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
+      for(int x=0;x< size;x++)
+      for(int y=0;y< size;y++) {
+        pixel = contract[x+(i>>1)][y+(j>>1)];
+        domi2[x][y] = pixel;
+      }
+      block_ent = entropy_2(size,domi2,0,0);
+      // printf("Block Entropy = %f\n",block_ent);
+      if(max_ent < block_ent) max_ent = block_ent;
+
+    }
+  }
+  
+  max_ent_arr[s] = max_ent;
+  // printf("Max std = %f\n",max_std);
+}
+
+void findMaxStd(int size, int s)
+{
+  double pixel = 0.0, block_var = 0.0, max_var = 0.0;
+  double **domi2;
+  matrix_allocate(domi2,size,size,double);
+  
+    for(int i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
+    for(int j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
+        for(int x=0;x< size;x++)
+        for(int y=0;y< size;y++) {
+        pixel = contract[x+(i>>1)][y+(j>>1)];
+        domi2[x][y] = pixel;
+        block_var = variance_2(size,domi2,0,0);
+      }
+      if(max_var < block_var) max_var = block_var;
+
+    }
+  }
+  // printf("Max std = %f\n",max_var);
+  max_std_arr[s] = sqrt(max_var);
+}
+
+void BasicFIC_Indexing(int size,int s)
 {
   int i,j,k,h;
   int count = 0;
-  int iso, clas, var_class;
-  double sum,sum2,sum3,sum4;
+  int iso, clas;
+  double sum,sum2;
   double **domi,**flip_domi;
   register double pixel;
   register int x,y;
@@ -659,7 +1090,6 @@ void FisherIndexing(int size,int s)
 
   matrix_allocate(domi,size,size,double)
   matrix_allocate(flip_domi,size,size,double)
-  int class_count[24] = {0};
 
   for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
     for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
@@ -667,15 +1097,142 @@ void FisherIndexing(int size,int s)
       k=0;
       sum  = 0.0;
       sum2 = 0.0;
-      sum3 = 0.0;
-      sum4 = 0.0;
       for(x=0;x< size;x++)
       for(y=0;y< size;y++) {
         pixel = contract[x+(i>>1)][y+(j>>1)];
         sum  += pixel;
         sum2 += pixel * pixel;
-        sum3 += pixel * pixel * pixel;
-        sum4 += pixel * pixel * pixel * pixel;
+        domi[x][y] = pixel;
+      }
+      
+                                   /* Compute the symmetry operation which */
+      newclass(size,domi,&iso,&clas); /* brings the domain in the canonical   */
+                                      /* orientation                          */
+      flips(size,domi,flip_domi,iso); 
+
+
+      node = (struct c *) malloc(sizeof(struct c));
+      node -> ptr_x = i;
+      node -> ptr_y = j;
+      node -> sum   = sum;
+      node -> sum2  = sum2;
+      node -> iso  = iso;
+      node -> next  = class_basicFIC[s][clas];
+      class_basicFIC[s][clas] = node;
+      
+    }
+    printf(" Classification (Basic FIC) domain (%dx%d)  %d \r",size,size,count) ;
+    fflush(stdout);
+
+  }
+
+  printf("\n");
+  free(domi[0]);
+  free(flip_domi[0]);
+}
+
+
+void EntropyIndexing(int size,int s)
+{
+  int i,j,k,h;
+  int count = 0;
+  int iso, clas, entr_class;
+  double sum,sum2,sum3,sum4,max_var = 0.0,block_var = 0.0;
+  double **domi,**flip_domi;
+  register double pixel;
+  register int x,y;
+  struct c *node;
+
+  matrix_allocate(domi,size,size,double);
+  
+  matrix_allocate(flip_domi,size,size,double);
+
+ 
+  for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
+    for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
+      count ++;
+      k=0;
+      sum  = 0.0;
+      sum2 = 0.0;
+       for(x=0;x< size;x++)
+        for(y=0;y< size;y++) {
+        pixel = contract[x+(i>>1)][y+(j>>1)];
+        sum  += pixel;
+        sum2 += pixel * pixel;
+        domi[x][y] = pixel;
+      }
+                                   /* Compute the symmetry operation which */
+      newclass(size,domi,&iso,&clas); /* brings the domain in the canonical   */
+                                      /* orientation                          */
+      flips(size,domi,flip_domi,iso); 
+
+      entr_class = ent_class(size,flip_domi);
+      // printf("std class= %d\n",stdd_class);
+      node = (struct c *) malloc(sizeof(struct c));
+      node -> ptr_x = i;
+      node -> ptr_y = j;
+      node -> sum   = sum;
+      node -> sum2  = sum2;
+      node -> iso  = iso;
+      node -> next  = class_entropy[s][clas][entr_class];
+      class_entropy[s][clas][entr_class] = node;
+      
+    }
+    printf(" Classification (Entropy Based) domain (%dx%d)  %d \r",size,size,count) ;
+    fflush(stdout);
+
+  }
+
+  for(i=0;i<3;i++)    /* Find a not empty class */
+  for(j=0;j<final_max_ent_q;j++)
+    if(class_entropy[s][i][j] != NULL)
+         goto out_loops;
+
+
+  out_loops:
+
+  for(k=0;k<3;k++)  /* Make sure no class is empty */
+  for(h=0;h<final_max_ent_q;h++)
+    if(class_entropy[s][k][h] == NULL)
+      class_entropy[s][k][h] = class_entropy[s][i][j];
+
+
+  printf("\n");
+  // for(int i = 0; i < 24; i++){
+  //   printf("Class %d count = %d\n",i,class_count[i]);
+  // }
+
+  free(domi[0]);
+  free(flip_domi[0]);
+}
+
+void COVIndexing(int size,int s)
+{
+  int i,j,k,h;
+  int count = 0;
+  int iso, clas, stdd_class;
+  double sum,sum2,sum3,sum4,max_var = 0.0,block_var = 0.0;
+  double **domi,**flip_domi;
+  register double pixel;
+  register int x,y;
+  struct c *node;
+
+  matrix_allocate(domi,size,size,double);
+  
+  matrix_allocate(flip_domi,size,size,double);
+
+ 
+  for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
+    for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
+      count ++;
+      k=0;
+      sum  = 0.0;
+      sum2 = 0.0;
+       for(x=0;x< size;x++)
+        for(y=0;y< size;y++) {
+        pixel = contract[x+(i>>1)][y+(j>>1)];
+        sum  += pixel;
+        sum2 += pixel * pixel;
         domi[x][y] = pixel;
       }
                                       /* Compute the symmetry operation which */
@@ -683,16 +1240,174 @@ void FisherIndexing(int size,int s)
                                       /* orientation                          */
       flips(size,domi,flip_domi,iso); 
 
-      var_class = variance_class(size,flip_domi);
-
+      stdd_class = std_class(size,flip_domi);
+      if(stdd_class > final_max_std) stdd_class = final_max_std;
+      // printf("std class= %d\n",stdd_class);
       node = (struct c *) malloc(sizeof(struct c));
       node -> ptr_x = i;
       node -> ptr_y = j;
       node -> sum   = sum;
       node -> sum2  = sum2;
-      node -> sum3  = sum3;
-      node -> sum4  = sum4;
       node -> iso  = iso;
+      node -> var = variance_2(size,domi,0,0);
+      node -> next  = class_std[s][clas][stdd_class];
+      class_std[s][clas][stdd_class] = node;
+      
+    }
+    printf(" Classification (COV) domain (%dx%d)  %d \r",size,size,count) ;
+    fflush(stdout);
+
+  }
+  // printf("Max STD= %d\n",final_max_std);
+  for(i=0;i<3;i++)    /* Find a not empty class */
+  for(j=0;j<final_max_std;j++)
+    if(class_std[s][i][j] != NULL)
+         goto out_loops;
+
+
+  out_loops:
+
+  for(k=0;k<3;k++)  /* Make sure no class is empty */
+  for(h=0;h<final_max_std;h++)
+    if(class_std[s][k][h] == NULL)
+      class_std[s][k][h] = class_std[s][i][j];
+
+
+  printf("\n");
+  // for(int i = 0; i < 24; i++){
+  //   printf("Class %d count = %d\n",i,class_count[i]);
+  // }
+
+  free(domi[0]);
+  free(flip_domi[0]);
+}
+
+void STDIndexing(int size,int s)
+{
+  int i,j,k,h;
+  int count = 0;
+  int iso, clas, stdd_class;
+  double sum,sum2,sum3,sum4,max_var = 0.0,block_var = 0.0;
+  double **domi,**flip_domi;
+  register double pixel;
+  register int x,y;
+  struct c *node;
+
+  matrix_allocate(domi,size,size,double);
+  
+  matrix_allocate(flip_domi,size,size,double);
+
+ 
+  for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
+    for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
+      count ++;
+      k=0;
+      sum  = 0.0;
+      sum2 = 0.0;
+       for(x=0;x< size;x++)
+        for(y=0;y< size;y++) {
+        pixel = contract[x+(i>>1)][y+(j>>1)];
+        sum  += pixel;
+        sum2 += pixel * pixel;
+        domi[x][y] = pixel;
+      }
+                                      /* Compute the symmetry operation which */
+      newclass(size,domi,&iso,&clas); /* brings the domain in the canonical   */
+                                      /* orientation                          */
+      flips(size,domi,flip_domi,iso); 
+
+      stdd_class = std_class(size,flip_domi);
+      if(stdd_class > final_max_std) stdd_class = final_max_std;
+      // printf("std class= %d\n",stdd_class);
+      node = (struct c *) malloc(sizeof(struct c));
+      node -> ptr_x = i;
+      node -> ptr_y = j;
+      node -> sum   = sum;
+      node -> sum2  = sum2;
+      node -> iso  = iso;
+      node -> next  = class_std[s][clas][stdd_class];
+      class_std[s][clas][stdd_class] = node;
+      
+    }
+    printf(" Classification (Fisher) domain (%dx%d)  %d \r",size,size,count) ;
+    fflush(stdout);
+
+  }
+  // printf("Max STD= %d\n",final_max_std);
+  for(i=0;i<3;i++)    /* Find a not empty class */
+  for(j=0;j<final_max_std;j++)
+    if(class_std[s][i][j] != NULL)
+         goto out_loops;
+
+
+  out_loops:
+
+  for(k=0;k<3;k++)  /* Make sure no class is empty */
+  for(h=0;h<final_max_std;h++)
+    if(class_std[s][k][h] == NULL)
+      class_std[s][k][h] = class_std[s][i][j];
+
+
+  printf("\n");
+  // for(int i = 0; i < 24; i++){
+  //   printf("Class %d count = %d\n",i,class_count[i]);
+  // }
+
+  free(domi[0]);
+  free(flip_domi[0]);
+}
+
+
+void EnergyCoeff_FisherIndexing(int size,int s)
+{
+  int i,j,k,h;
+  int count = 0;
+  int iso, clas, var_class;
+  double sum,sum2,t_sum, energy_coeff = 0.0, vari;
+  double max_energy_coeff = 0.0, min_energy_coeff = 1000000.000000;
+  double **domi,**flip_domi;
+  register double pixel;
+  register int x,y;
+  struct c *node;
+
+
+  
+  matrix_allocate(domi,size,size,double);
+  matrix_allocate(flip_domi,size,size,double);
+  int class_count[24] = {0};
+  
+  for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
+    for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
+      energy_coeff = 0.0;
+      count ++;
+      k=0;
+      t_sum = 0.0;
+      sum  = 0.0;
+      sum2 = 0.0;
+      for(x=0;x< size;x++)
+      for(y=0;y< size;y++) {
+        pixel = contract[x+(i>>1)][y+(j>>1)];
+        sum  += pixel;
+        sum2 += pixel * pixel;
+        domi[x][y] = pixel;
+      }
+
+                                   /* Compute the symmetry operation which */
+      newclass(size,domi,&iso,&clas); /* brings the domain in the canonical   */
+                                      /* orientation                          */
+      flips(size,domi,flip_domi,iso); 
+      // printf("here\n");
+       var_class =  EnergyCoeff_class(size,flip_domi);
+      // var_class = EnergyCoeff_class(size,flip_domi);
+       // printf("var class=%d\n",var_class);
+      
+      node = (struct c *) malloc(sizeof(struct c));
+      node -> ptr_x = i;
+      node -> ptr_y = j;
+      node -> sum   = sum;
+      node -> sum2  = sum2;
+      node -> iso  = iso;
+      node -> var = vari;
       node -> next  = class_fisher[s][clas][var_class];
       class_fisher[s][clas][var_class] = node;
       class_count[var_class]++;
@@ -700,8 +1415,8 @@ void FisherIndexing(int size,int s)
     }
     printf(" Classification (Fisher) domain (%dx%d)  %d \r",size,size,count) ;
     fflush(stdout);
-
   }
+  // printf("Max Energy Coeff = %f\n",max_energy_coeff);
 
   for(i=0;i<3;i++)    /* Find a not empty class */
   for(j=0;j<24;j++)
@@ -726,6 +1441,539 @@ void FisherIndexing(int size,int s)
   free(flip_domi[0]);
 }
 
+void adaptiveFisherIndexing_2(int x_size,int y_size)
+{
+ // y_size = 6; x_size = 4;
+  
+  int i,j,k,h;
+  int count = 0;
+  int iso, clas, var_class;
+  double sum,sum2;
+  double **domi,**flip_domi;
+  register double pixel;
+  register int x,y;
+  struct c *node;
+  int x_s = x_size;
+  int y_s = y_size;
+  //todo : check images dimensions in mars_enc
+ // DOMAIN_X_BITS = (int)log2(x_size);
+  //DOMAIN_Y_BITS = (int)log2(y_size);
+  // printf("allocating memory\n");
+  matrix_allocate(L1_var_limits,MAX_ADAP_D_BITS + 1,2,int);
+  L1_class_width = new int[MAX_ADAP_D_BITS + 1];
+  matrix_allocate(domi,x_size,y_size,double)
+  // matrix_allocate(flip_domi,x_size,y_size,double)
+  int class_count[24] = {0};
+  // printf("memory allocated\n");
+  for(i=0;i< image_height - 2 * y_size +1 ;i+= SHIFT) {
+    for(j=0;j< image_width - 2 * x_size +1 ;j+= SHIFT ) {
+      count ++;
+      k=0;
+      sum  = 0.0;
+      sum2 = 0.0;
+      for(y=0;y< y_size;y++)
+      for(x=0;x< x_size;x++) {
+        pixel = contract[y+(i>>1)][x+(j>>1)];
+        sum  += pixel;
+        sum2 += pixel * pixel;
+        domi[y][x] = pixel;
+      }
+
+          
+      adaptiveNewclass_2(x_size,y_size,domi,&iso,&clas); 
+      // printf("x size = %d\t y size = %d\r",x_size,y_size);
+      // printf("Domain Class = %d\r",clas);
+      // exit(0);
+
+     // adaptiveFlips(x_size,y_size,domi,flip_domi,iso); 
+
+      //var_class = adaptiveVariance_class(x_size,y_size,flip_domi);
+      iso = 0 ;//not considering rotations yet, to be implemented in the future
+      node = (struct c *) malloc(sizeof(struct c));
+      node -> ptr_x = i;
+      node -> ptr_y = j;
+      node -> sum   = sum;
+      node -> sum2  = sum2;
+      node -> iso  = iso;
+      //node -> var = variance_3(x_size,y_size,domi,0,0);
+      node -> next  = adaptive_fisher_class[y_s][x_s][clas];
+      adaptive_fisher_class[y_s][x_s][clas] = node;
+      class_count[clas]++;
+    }
+    printf(" Classification (Fisher) domain (%dx%d)  %d \r",y_size,x_size,count) ;
+    // printf("\n");
+  
+    fflush(stdout);
+  }
+  for(i=0;i<24;i++)    /* Find a not empty class */
+    if(adaptive_fisher_class[y_s][x_s][i] != NULL)
+         goto out_loops;
+
+
+  out_loops:
+
+  for(k=0;k<24;k++)  /* Make sure no class is empty */
+    if(adaptive_fisher_class[y_s][x_s][k] == NULL)
+      adaptive_fisher_class[y_s][x_s][k] = adaptive_fisher_class[y_s][x_s][i];
+
+
+  printf("\n");
+  // for(int i = 0; i < 24; i++){
+  //   printf("Class %d count = %d\n",i,class_count[i]);
+  // }
+
+  free(domi[0]);
+  // free(flip_domi[0]);
+}
+
+void adaptiveFisherIndexing(int x_size,int y_size,int x_s, int y_s)
+{
+
+  int i,j,k,h;
+  int count = 0;
+  int iso, clas, var_class;
+  double sum,sum2,sum3,sum4;
+  double **domi,**flip_domi;
+  register double pixel;
+  register int x,y;
+  struct c *node;
+  // FisherIndexing_2(x_size,(int)log2(x_size));
+  //todo : check images dimensions in mars_enc
+ // DOMAIN_X_BITS = (int)log2(x_size);
+  //DOMAIN_Y_BITS = (int)log2(y_size);
+  // printf("allocating memory\n");
+  matrix_allocate(domi,x_size,y_size,double)
+  matrix_allocate(flip_domi,x_size,y_size,double)
+  int class_count[24] = {0};
+  // printf("memory allocated\n");
+  for(i=0;i< image_height - 2 * y_size +1 ;i+= SHIFT) {
+    for(j=0;j< image_width - 2 * x_size +1 ;j+= SHIFT ) {
+      count ++;
+      k=0;
+      sum  = 0.0;
+      sum2 = 0.0;
+      
+      for(y=0;y< y_size;y++)
+      for(x=0;x< x_size;x++) {
+        pixel = contract[y+(i>>1)][x+(j>>1)];
+        sum  += pixel;
+        sum2 += pixel * pixel;
+        domi[y][x] = pixel;
+      }
+      
+                                   /* Compute the symmetry operation which */
+      adaptiveNewclass(x_size,y_size,domi,&iso,&clas); /* brings the domain in the canonical   */
+      
+     // adaptiveFlips(x_size,y_size,domi,flip_domi,iso); 
+       
+      //var_class = adaptiveVariance_class(x_size,y_size,flip_domi);
+      iso = 0 ;//not considering rotations yet, to be implemented in the future
+      node = (struct c *) malloc(sizeof(struct c));
+      node -> ptr_x = i;
+      node -> ptr_y = j;
+      node -> sum   = sum;
+      node -> sum2  = sum2;
+      node -> sum3  = sum3;
+      node -> sum4  = sum4;
+      node -> iso  = iso;
+      //node -> var = variance_3(x_size,y_size,domi,0,0);
+      node -> next  = adaptive_fisher_class[y_s][x_s][clas];
+      adaptive_fisher_class[y_s][x_s][clas] = node;
+      
+    }
+    printf(" Classification (Fisher) domain (%dx%d)  %d \r",y_size,x_size,count) ;
+    fflush(stdout);
+
+  }
+
+  for(i=0;i<24;i++)    /* Find a not empty class */
+    if(adaptive_fisher_class[y_s][x_s][i] != NULL)
+         goto out_loops;
+
+
+  out_loops:
+
+  for(k=0;k<24;k++)  /* Make sure no class is empty */
+    if(adaptive_fisher_class[y_s][x_s][k] == NULL)
+      adaptive_fisher_class[y_s][x_s][k] = adaptive_fisher_class[y_s][x_s][i];
+
+
+  printf("\n");
+  // for(int i = 0; i < 24; i++){
+  //   printf("Class %d count = %d\n",i,class_count[i]);
+  // }
+
+  free(domi[0]);
+  free(flip_domi[0]);
+}
+
+void FisherIndexing_2(int size,int s)
+{
+  int i,j,k,h;
+  int count = 0;
+  int iso, clas, var_class;
+  double sum,sum2,sum3,sum4;
+  double **domi,**flip_domi;
+  register double pixel;
+  register int x,y;
+  struct c *node;
+  partition_type = 1;
+  matrix_allocate(domi,size,size,double)
+  matrix_allocate(flip_domi,size,size,double)
+  int class_count[24] = {0};
+
+  for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
+    for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
+      count ++;
+      k=0;
+      sum  = 0.0;
+      sum2 = 0.0;
+      sum3 = 0.0;
+      sum4 = 0.0;
+      for(x=0;x< size;x++)
+      for(y=0;y< size;y++) {
+        pixel = contract[x+(i>>1)][y+(j>>1)];
+        sum  += pixel;
+        sum2 += pixel * pixel;
+        sum3 += pixel * pixel * pixel;
+        sum4 += pixel * pixel * pixel * pixel;
+        domi[x][y] = pixel;
+      }
+      
+                                   /* Compute the symmetry operation which */
+      newclass(size,domi,&iso,&clas); /* brings the domain in the canonical   */
+                                      /* orientation                          */
+      flips(size,domi,flip_domi,iso); 
+
+      var_class = variance_class(size,flip_domi);
+
+      node = (struct c *) malloc(sizeof(struct c));
+      node -> ptr_x = i;
+      node -> ptr_y = j;
+      node -> sum   = sum;
+      node -> sum2  = sum2;
+      node -> sum3  = sum3;
+      node -> sum4  = sum4;
+      node -> iso  = iso;
+      node -> var = variance_2(size,domi,0,0);
+      node -> next  = class_fisher[s][clas][var_class];
+      class_fisher[s][clas][var_class] = node;
+      class_count[var_class]++;
+      
+    }
+    // printf(" Classification (Fisher) domain (%dx%d)  %d \r",size,size,count) ;
+    fflush(stdout);
+
+  }
+
+  for(i=0;i<3;i++)    /* Find a not empty class */
+  for(j=0;j<24;j++)
+    if(class_fisher[s][i][j] != NULL)
+         goto out_loops;
+
+
+  out_loops:
+
+  for(k=0;k<3;k++)  /* Make sure no class is empty */
+  for(h=0;h<24;h++)
+    if(class_fisher[s][k][h] == NULL){
+      // printf("Current class is null\n");
+      class_fisher[s][k][h] = class_fisher[s][i][j];
+    }
+
+  // printf("\n");
+  // for(int i = 0; i < 24; i++){
+  //   printf("Class %d count = %d\n",i,class_count[i]);
+  // }
+
+  free(domi[0]);
+  free(flip_domi[0]);
+}
+
+void push(struct c** head_ref, int new_data)
+{
+    /* allocate node */
+    struct c* new_node = new struct c;
+ 
+    /* put in the data  */
+    new_node->var = new_data;
+ 
+    /* link the old list off the new node */
+    new_node->next = (*head_ref);
+ 
+    /* move the head to point to the new node */
+    (*head_ref)    = new_node;
+}
+ 
+/* A utility function to print linked list */
+void printList(struct c *node)
+{
+    while (node != NULL)
+    {
+        printf("%d  ", node->var);
+        node = node->next;
+    }
+    printf("\n");
+}
+ 
+// Returns the last node of the list
+struct c *getTail(struct c *cur)
+{
+    while (cur != NULL && cur->next != NULL)
+        cur = cur->next;
+    return cur;
+}
+ 
+// Partitions the list taking the last element as the pivot
+struct c *partition(struct c *head, struct c *end,
+                       struct c **newHead, struct c **newEnd)
+{
+    struct c *pivot = end;
+    struct c *prev = NULL, *cur = head, *tail = pivot;
+ 
+    // During partition, both the head and end of the list might change
+    // which is updated in the newHead and newEnd variables
+    while (cur != pivot)
+    {
+        if (cur->var < pivot->var)
+        {
+            // First node that has a value less than the pivot - becomes
+            // the new head
+            if ((*newHead) == NULL)
+                (*newHead) = cur;
+ 
+            prev = cur;  
+            cur = cur->next;
+        }
+        else // If cur node is greater than pivot
+        {
+            // Move cur node to next of tail, and change tail
+            if (prev)
+                prev->next = cur->next;
+            struct c *tmp = cur->next;
+            cur->next = NULL;
+            tail->next = cur;
+            tail = cur;
+            cur = tmp;
+        }
+    }
+ 
+    // If the pivot data is the smallest element in the current list,
+    // pivot becomes the head
+    if ((*newHead) == NULL)
+        (*newHead) = pivot;
+ 
+    // Update newEnd to the current last node
+    (*newEnd) = tail;
+ 
+    // Return the pivot node
+    return pivot;
+}
+ 
+ 
+//here the sorting happens exclusive of the end node
+struct c *quickSortRecur(struct c *head, struct c *end)
+{
+    // base condition
+    if (!head || head == end)
+        return head;
+ 
+    struct c *newHead = NULL, *newEnd = NULL;
+ 
+    // Partition the list, newHead and newEnd will be updated
+    // by the partition function
+    struct c *pivot = partition(head, end, &newHead, &newEnd);
+ 
+    // If pivot is the smallest element - no need to recur for
+    // the left part.
+    if (newHead != pivot)
+    {
+        // Set the node before the pivot node as NULL
+        struct c *tmp = newHead;
+        while (tmp->next != pivot)
+            tmp = tmp->next;
+        tmp->next = NULL;
+ 
+        // Recur for the list before pivot
+        newHead = quickSortRecur(newHead, tmp);
+ 
+        // Change next of last node of the left half to pivot
+        tmp = getTail(newHead);
+        tmp->next =  pivot;
+    }
+ 
+    // Recur for the list after the pivot element
+    pivot->next = quickSortRecur(pivot->next, newEnd);
+ 
+    return newHead;
+}
+ 
+// The main function for quick sort. This is a wrapper over recursive
+// function quickSortRecur()
+void quickSort(struct c **headRef)
+{
+    *headRef = quickSortRecur(*headRef, getTail(*headRef));
+    return;
+}
+
+void FisherIndexing_domainSort(int size,int s)
+{
+  int i,j,k,h;
+  int count = 0;
+  int iso, clas, var_class;
+  double sum,sum2;
+  double **domi,**flip_domi;
+  register double pixel;
+  register int x,y;
+  struct c *node;
+
+  matrix_allocate(domi,size,size,double)
+  matrix_allocate(flip_domi,size,size,double)
+  int class_count[24] = {0};
+
+  for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
+    for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
+      count ++;
+      k=0;
+      sum  = 0.0;
+      sum2 = 0.0;
+   
+      for(x=0;x< size;x++)
+      for(y=0;y< size;y++) {
+        pixel = contract[x+(i>>1)][y+(j>>1)];
+        sum  += pixel;
+        sum2 += pixel * pixel;
+        domi[x][y] = pixel;
+      }
+
+      
+                                   /* Compute the symmetry operation which */
+      newclass(size,domi,&iso,&clas); /* brings the domain in the canonical   */
+                                      /* orientation                          */
+      flips(size,domi,flip_domi,iso); 
+
+      var_class = variance_class(size,flip_domi);
+
+      node = (struct c *) malloc(sizeof(struct c));
+      node -> ptr_x = i;
+      node -> ptr_y = j;
+      node -> sum   = sum;
+      node -> sum2  = sum2;
+      node -> iso  = iso;
+      node -> var = variance_2(size,flip_domi,0,0);
+      node -> next  = class_fisher[s][clas][var_class];
+      class_fisher[s][clas][var_class] = node;
+      class_count[var_class]++;
+      
+    }
+    printf(" Classification (Fisher) domain (%dx%d)  %d \r",size,size,count) ;
+    fflush(stdout);
+
+  }
+
+  for(i=0;i<3;i++)    /* Find a not empty class */
+  for(j=0;j<24;j++)
+    if(class_fisher[s][i][j] != NULL)
+         goto out_loops;
+
+
+  out_loops:
+
+  for(k=0;k<3;k++)  /* Make sure no class is empty */
+  for(h=0;h<24;h++)
+    if(class_fisher[s][k][h] == NULL){
+      // printf("Current class is null\n");
+      class_fisher[s][k][h] = class_fisher[s][i][j];
+    }
+
+  printf("\n");
+  // for(int i = 0; i < 24; i++){
+  //   printf("Class %d count = %d\n",i,class_count[i]);
+  // }
+  
+  for(int i=0; i < 3; i++){
+    for(int j=0; j< 24 ;j ++){
+      quickSort(&class_fisher[s][i][j]);
+    }
+  }
+
+  free(domi[0]);
+  free(flip_domi[0]);
+}
+
+void FisherIndexing(int size,int s)
+{
+  int i,j,k,h;
+  int count = 0;
+  int iso, clas, var_class;
+  double sum,sum2;
+  double **domi,**flip_domi;
+  register double pixel;
+  register int x,y;
+  struct c *node;
+
+  matrix_allocate(domi,size,size,double)
+  matrix_allocate(flip_domi,size,size,double)
+
+  for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
+    for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
+      count ++;
+      k=0;
+      sum  = 0.0;
+      sum2 = 0.0;
+   
+      for(x=0;x< size;x++)
+      for(y=0;y< size;y++) {
+        pixel = contract[x+(i>>1)][y+(j>>1)];
+        sum  += pixel;
+        sum2 += pixel * pixel;
+        domi[x][y] = pixel;
+      }
+
+      
+                                   /* Compute the symmetry operation which */
+      newclass(size,domi,&iso,&clas); /* brings the domain in the canonical   */
+                                      /* orientation                          */
+      flips(size,domi,flip_domi,iso); 
+
+      var_class = variance_class(size,flip_domi);
+
+      node = (struct c *) malloc(sizeof(struct c));
+      node -> ptr_x = i;
+      node -> ptr_y = j;
+      node -> sum   = sum;
+      node -> sum2  = sum2;
+      node -> iso  = iso;
+      node -> var = variance_2(size,flip_domi,0,0);
+      node -> next  = class_fisher[s][clas][var_class];
+      class_fisher[s][clas][var_class] = node;
+      class_count[var_class]++;
+      
+    }
+    printf(" Classification (Fisher) domain (%dx%d)  %d \r",size,size,count) ;
+    fflush(stdout);
+
+  }
+
+  for(i=0;i<3;i++)    /* Find a not empty class */
+  for(j=0;j<24;j++)
+    if(class_fisher[s][i][j] != NULL)
+         goto out_loops;
+
+
+  out_loops:
+
+  for(k=0;k<3;k++)  /* Make sure no class is empty */
+  for(h=0;h<24;h++)
+    if(class_fisher[s][k][h] == NULL){
+      class_fisher[s][k][h] = class_fisher[s][i][j];
+    }
+
+  printf("\n");
+  
+  free(domi[0]);
+  free(flip_domi[0]);
+}
 
 void ComputeFeatVectDimSaupe()
 {

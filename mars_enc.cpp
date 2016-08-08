@@ -38,6 +38,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 #include <vector>
 
 #include <opencv2/core.hpp>
@@ -54,7 +55,7 @@
 
 int main(int argc, char **argv)
 {
-  int i,k,max;
+  int i,j,k,max;
   char *p,*pp;
   int int_max_alfa;
   clock_t t;
@@ -79,39 +80,39 @@ int main(int argc, char **argv)
   // else
   //    readimage_raw(filein);  
 
-  Mat input_image = imread(filein, CV_LOAD_IMAGE_ANYDEPTH);
-    int w = input_image.cols;
+  Mat input_image = imread(filein);
+  int w = input_image.cols;
   int h = input_image.rows;   
-
 
   image_width = w;
   image_height = h;
 
   std::vector<Mat> yuvChannels(3);
-  if(input_image.channels() == 3){
-    isColor = 1;
+  // if(input_image.channels() == 3){
+  //   isColor = 1;
     
-    cvtColor(input_image, input_image, CV_BGR2YUV);
-    split(input_image, yuvChannels);
-    matrix_allocate(image, w, h, PIXEL);
-    matrix_allocate(image_uch, w, h, PIXEL);
-    matrix_allocate(image_vch, w, h, PIXEL);
-    for (int iii = 0; iii < w; iii++) {
-      for (int jjj = 0; jjj < h; jjj++) {
-        image[jjj][iii] = yuvChannels[0].at<uchar>(jjj, iii);
-        image_uch[jjj][iii] = yuvChannels[1].at<uchar>(jjj, iii);
-        image_vch[jjj][iii] = yuvChannels[2].at<uchar>(jjj, iii);
-      }
-    }
-  }
-  else{
+  //   cvtColor(input_image, input_image, CV_BGR2YUV);
+  //   split(input_image, yuvChannels);
+  //   matrix_allocate(image, w+1, h+1, PIXEL);
+  //   matrix_allocate(image_uch, w+1, h+1, PIXEL);
+  //   matrix_allocate(image_vch, w+1, h+1, PIXEL);
+  //   for (int iii = 0; iii < w; iii++) {
+  //     for (int jjj = 0; jjj < h; jjj++) {
+  //       image[jjj][iii] = yuvChannels[0].at<uchar>(jjj, iii);
+  //       image_uch[jjj][iii] = yuvChannels[1].at<uchar>(jjj, iii);
+  //       image_vch[jjj][iii] = yuvChannels[2].at<uchar>(jjj, iii);
+  //     }
+  //   }
+  // }
+  // else{
+    cvtColor(input_image,input_image,CV_RGB2GRAY);
     matrix_allocate(image, w, h, PIXEL);
     for (int iii = 0; iii < w; iii++) {
       for (int jjj = 0; jjj < h; jjj++) {
         image[jjj][iii] = input_image.at<uchar>(jjj, iii);
       }
     }
-  }
+  // }
 
 
   max = image_height;
@@ -125,6 +126,10 @@ int main(int argc, char **argv)
   matrix_allocate(range_tmp,64,64,double)
   matrix_allocate(flip_range,64,64,double)
   matrix_allocate(range,64,64,double)
+  t = clock();
+  contraction(contract,image,0,0);
+  
+
 
   switch(method) {
     case MassCenter  :  
@@ -154,6 +159,145 @@ int main(int argc, char **argv)
       Coding = SaupeCoding;
       printf(" Speed-up method: Saupe\n\n");
       break;
+     case CoVar :
+      // for(i=(int) rint(log((double) 2) / log(2.0)); 
+      //                i<= (int) rint(log((double) max_size) / log(2.0)); i++) {
+      //  findMaxStd((int) rint(pow(2.0,(double)i)),i);
+      // }  
+      // for(int i=0; i < 8; ++i){
+      //   if(final_max_std < max_std_arr[i]) final_max_std = max_std_arr[i];
+      // }
+      // final_max_std = (int)floor(final_max_std);
+      final_max_std = 255;
+      // printf("Max STD = %f\n",final_max_std);
+      // for(int i=0;i<8;++i){
+      //   for(int j=0; j<3;++j){
+      //     class_std[i][j] = (struct c **) malloc(sizeof(struct c*) * (final_max_std+5));
+      //   }
+      // }
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<final_max_std;++i)
+          class_std[k][h][i] = NULL;
+
+      // for(i=0;i<24;i++)
+          // class_basic[k][h][i] = NULL;
+
+      Indexing = COVIndexing;
+      Coding =  COVCoding;
+      printf(" Speed-up method: Coeff of Variance  \n\n");
+      break;
+
+      case CoVar1 :
+      // for(i=(int) rint(log((double) 2) / log(2.0)); 
+      //                i<= (int) rint(log((double) max_size) / log(2.0)); i++) {
+      //  findMaxStd((int) rint(pow(2.0,(double)i)),i);
+      // }  
+      // for(int i=0; i < 8; ++i){
+      //   if(final_max_std < max_std_arr[i]) final_max_std = max_std_arr[i];
+      // }
+      // final_max_std = (int)floor(final_max_std);
+      final_max_std = 255;
+      // printf("Max STD = %f\n",final_max_std);
+     
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<final_max_std;++i)
+          class_std[k][h][i] = NULL;
+
+      // for(i=0;i<24;i++)
+          // class_basic[k][h][i] = NULL;
+
+      Indexing = COVIndexing;
+      Coding =  CovClass_AdaptiveSearch_FisherCoding;
+      // Coding =  COVCoding;
+      printf(" Speed-up method: Coeff of Variance with adaptive search  \n\n");
+      break;
+
+       case CoVar2 :
+      // for(i=(int) rint(log((double) 2) / log(2.0)); 
+      //                i<= (int) rint(log((double) max_size) / log(2.0)); i++) {
+      //  findMaxStd((int) rint(pow(2.0,(double)i)),i);
+      // }  
+      // for(int i=0; i < 8; ++i){
+      //   if(final_max_std < max_std_arr[i]) final_max_std = max_std_arr[i];
+      // }
+      // final_max_std = (int)floor(final_max_std);
+      final_max_std = 255;
+      // printf("Max STD = %f\n",final_max_std);
+      // for(int i=0;i<8;++i){
+      //   for(int j=0; j<3;++j){
+      //     class_std[i][j] = (struct c **) malloc(sizeof(struct c*) * (final_max_std+5));
+      //   }
+      // }
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<final_max_std;++i)
+          class_std[k][h][i] = NULL;
+
+      // for(i=0;i<24;i++)
+          // class_basic[k][h][i] = NULL;
+
+      Indexing = COVIndexing;
+      Coding =  CovClass_AdaptiveSearch_FisherCoding;
+      printf(" Speed-up method: Coeff of Variance with adaptive search and adaptive range based paritioning  \n\n");
+      break;
+
+    case Fisher_std :
+      for(i=(int) rint(log((double) 2) / log(2.0)); 
+                     i<= (int) rint(log((double) max_size) / log(2.0)); i++) {
+       findMaxStd((int) rint(pow(2.0,(double)i)),i);
+      }  
+      for(int i=0; i < 8; ++i){
+        if(final_max_std < max_std_arr[i]) final_max_std = max_std_arr[i];
+      }
+      final_max_std = 255;
+      // printf("Max STD = %f\n",final_max_std);
+      // for(int i=0;i<8;++i){
+      //   for(int j=0; j<3;++j){
+      //     class_std[i][j] = (struct c **) malloc(sizeof(struct c*) * (final_max_std+5));
+      //   }
+      // }
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<final_max_std;++i)
+          class_std[k][h][i] = NULL;
+
+      // for(i=0;i<24;i++)
+          // class_basic[k][h][i] = NULL;
+
+      Indexing = STDIndexing;
+      Coding =  STDCoding;
+      printf(" Speed-up method: STD \n\n");
+      break;
+    case Entropy_based :
+      for(i=(int) rint(log((double) 2) / log(2.0)); 
+                     i<= (int) rint(log((double) max_size) / log(2.0)); i++) {
+       findMaxEnt((int) (rint(pow(2.0,(double)i))/2),i);
+      }  
+      for(int i=0; i < 8; ++i){
+        if(final_max_ent > max_ent_arr[i]) final_max_ent = max_ent_arr[i];
+      }
+      final_max_ent_q = (int)floor(final_max_ent);
+      printf("Max ENT = %d\n",final_max_ent_q);
+      for(int i=0;i<8;++i){
+      for(int j=0; j<3;++j){
+        class_entropy[i][j] = (struct c **) malloc(sizeof(struct c*) * final_max_ent_q);
+        }
+      }
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<final_max_ent_q;++i)
+          class_entropy[k][h][i] = NULL;
+
+      // for(i=0;i<24;i++)
+          // class_basic[k][h][i] = NULL;
+
+      Indexing = EntropyIndexing;
+    Coding =  EntropyCoding;
+      printf(" Speed-up method: Entropy based classification\n\n");
+      break;
+
     case Fisher :  
       for(k=0;k<8;k++)
       for(h=0;h<3;h++)
@@ -162,8 +306,19 @@ int main(int argc, char **argv)
 
       Indexing = FisherIndexing;
       Coding = FisherCoding;
-      printf(" Speed-up method: Fisher\n\n");
+      printf(" Speed-up method: Fisher Coding\n\n");
       break;
+      
+    case BasicFIC :  
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+          class_basicFIC[k][h] = NULL;
+
+      Indexing = BasicFIC_Indexing;
+      Coding = BasicFIC_Coding;
+      printf(" Speed-up method: Basic FIC\n\n");
+      break;
+    
     case Nonlinear_Fisher :  
       for(k=0;k<8;k++)
       for(h=0;h<3;h++)
@@ -181,7 +336,17 @@ int main(int argc, char **argv)
           class_fisher[k][h][i] = NULL;
 
       Indexing = FisherIndexing;
-      LumInv_Coding = LumInv_FisherCoding;
+      testing_Coding = testing_FisherCoding;
+      printf(" Speed-up method:Luminance Invariant Fisher \n\n");
+      break;
+    case testing_Fisher :  
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<24;i++)
+          class_fisher[k][h][i] = NULL;
+
+      Indexing = FisherIndexing;
+      testing_Coding = testing_FisherCoding;
       printf(" Speed-up method:Luminance Invariant Fisher \n\n");
       break;
     case Hurtgen :  
@@ -216,6 +381,78 @@ int main(int argc, char **argv)
       Coding = Mc_SaupeCoding;
       printf(" Speed-up method: Mc-Saupe\n\n");
       break;
+ 
+    /*
+     * Fisher Classification with modified quadtree partition 
+     */
+    case Fisher_adaptiveQuadtree:
+      int l;
+      for(k=0;k<64;k++)
+      for(l=0;l<64;l++)
+      for(h=0;h<24;h++)
+          adaptive_fisher_class[k][l][h] = NULL;
+
+      adaptiveIndexing = adaptiveFisherIndexing_2;
+      adaptiveCoding = adaptiveFisherCoding;
+      printf(" Speed-up method: Fisher with Adaptive Quadtree\n\n");
+    break;
+
+      case modified_Fisher :  
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<24;i++)
+          class_fisher[k][h][i] = NULL;
+
+      Indexing = FisherIndexing;
+      Coding = modified_FisherCoding;
+      printf(" Speed-up method: Modified Fisher Coding\n\n");
+      break;
+
+       case modified_Fisher1 :  
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<24;i++)
+          class_fisher[k][h][i] = NULL;
+
+      Indexing = FisherIndexing;
+      Coding = modified_FisherCoding_1;
+      printf(" Speed-up method: Modified Fisher Coding with HV patition\n\n");
+      break;
+
+       case modified_Fisher2 :  
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<24;i++)
+          class_fisher[k][h][i] = NULL;
+
+      Indexing = FisherIndexing;
+      Coding = modified_FisherCoding_2;
+      printf(" Speed-up method: Modified Fisher Coding with HV patition and adaptive search\n\n");
+      break;
+
+       case modified_Fisher3 :  
+      for(k=0;k<8;k++)
+      for(h=0;h<3;h++)
+      for(i=0;i<24;i++)
+          class_fisher[k][h][i] = NULL;
+
+      Indexing = FisherIndexing_domainSort;
+      Coding = modified_FisherCoding_2;
+      printf(" Speed-up method: Modified Fisher Coding with HV patition and adaptive search\n"
+             " and domain sorting                                                        \n\n");
+      break;
+    /****************************************************************/
+    case Fisher_HV:
+      
+      for(k=0;k<64;k++)
+      for(l=0;l< 64 ;l++)
+      for(h=0;h<24;h++)
+          adaptive_fisher_class[k][l][h] = NULL;
+
+      HV_Indexing = HV_FisherIndexing;
+      HV_Coding = HV_FisherCoding;
+      printf(" Speed-up method: Fisher with HV parition\n\n");
+    break;
    /*
     case Your_method :                               If you want to try a new 
       classification = YourMethodIndexing;           method you need just to
@@ -225,16 +462,47 @@ int main(int argc, char **argv)
    */
   } 
 
-  contraction(contract,image,0,0);
+  // contraction(contract,image,0,0);
+  
+  switch(partition_type){
 
-  for(i=(int) rint(log((double) 2) / log(2.0)); 
+    case Quadtree:
+       for(i=(int) rint(log((double) 2) / log(2.0)); 
                      i<= (int) rint(log((double) max_size) / log(2.0)); i++) {
-       Indexing((int) rint(pow(2.0,(double)i)),i);
-  }
+          Indexing((int) rint(pow(2.0,(double)i)),i);
+        }
+    break;
 
+    case AdaptiveQuadtree:
+        
+        for(i= 1 << MIN_ADAP_D_BITS; i<= 1 << MAX_ADAP_D_BITS; i+=1) {
+          for(j=1 << MIN_ADAP_D_BITS; j<= 1 << MAX_ADAP_D_BITS; j+=1){
+            adaptiveIndexing( i, j ) ;
+          }
+        }
+    break;
+
+    case HV:
+        
+        for(i= min_size; i<= max_size; i+=2) {
+          for(j=min_size; j<= max_size; j+=2){
+            HV_Indexing( i, j ) ;
+          }
+        }
+
+    break;
+  }
+ 
+ 
+// exit(0);
   bits_per_coordinate_w = ceil(log(image_width  / SHIFT ) / log(2.0));
   bits_per_coordinate_h = ceil(log(image_height / SHIFT ) / log(2.0));
 
+  // for(int y=0; y < image_height / 2 - 1;y++){
+  //   for(int x=0; x < image_width/2 -1; x++){
+  //     printf("Contract[%d][%d] = %f\n",y,x,contract[y][x]);
+  //   }
+  // }
 
   for(k=0;k<virtual_size;k++)
   for(h=0;h<virtual_size;h++)
@@ -262,16 +530,26 @@ int main(int argc, char **argv)
   
   /* Header of output file */
 
-  if(isNonlinear){
+  if(isHV){
     pack(2,(long)1,fp);
-    pack(4,(long)N_BITALFA1,fp);
-    pack(4,(long)N_BITALFA2,fp);
-    pack(4,(long)N_BITBETA2,fp);
+    pack(4,(long)N_BITALFA,fp);
+    pack(4,(long)N_BITBETA,fp);
+    // pack(4,(long)N_BITALFA1,fp);
+    // pack(4,(long)N_BITALFA2,fp);
+    // pack(4,(long)N_BITBETA2,fp);
   }else if(isLumInv){
+    pack(2,(long)4,fp);
+    pack(4,(long)N_BITALFA,fp);
+    pack(4,(long)N_BITRMEAN,fp);
+  }else if(isTesting){
     pack(2,(long)2,fp);
     pack(4,(long)N_BITALFA,fp);
     pack(4,(long)N_BITRMEAN,fp);
-  }else{
+  }else if(isCovar2){
+    pack(2,(long)3,fp);
+    pack(4,(long)N_BITALFA,fp);
+    pack(4,(long)N_BITRMEAN,fp);
+  } else{
     pack(2,(long)0,fp);
     pack(4,(long)N_BITALFA,fp);
     pack(4,(long)N_BITBETA,fp);
@@ -289,29 +567,38 @@ int main(int argc, char **argv)
     pack(1,(long)1,fp);
   else
     pack(1,(long)0,fp);
-
-  printf("\n Image Entropy      : %f\n", entropy(image_width,image_height,0,0));
-  printf(" Image Variance     : %f\n", variance(image_width,image_height,0,0));
-  printf(" Entropy threshold  : %f\n",T_ENT);
-  printf(" Variance threshold : %f\n",T_VAR);
-  printf(" Rms threshold      : %f\n",T_RMS);
-  printf(" Color              : %s\n\n", isColor?"True":"False");
+  
+  // printf("\n Image Entropy      : %f\n", entropy(image_width,image_height,0,0));
+  // printf(" Image Variance     : %f\n", variance(image_width,image_height,0,0));
+  // printf(" Entropy threshold  : %f\n",T_ENT);
+  // printf(" Variance threshold : %f\n",T_VAR);
+  // printf(" Rms threshold      : %f\n",T_RMS);
+  // printf(" Color              : %s\n\n", isColor?"True":"False");
 
   if(isNonlinear)
     Nonlinear_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
   else if(isLumInv)
     LumInv_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
-  else
-    quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
-
+  else if(isTesting)
+    testing_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
+  else if(isCovar2)
+    quadtree_2(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
+  else{
+    if(partition_type == Quadtree)
+      quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
+    else if(partition_type == AdaptiveQuadtree)
+      traverseImage(0,0,virtual_size,virtual_size);
+    else if(partition_type == HV)
+      HV_traverseImage(0,0,virtual_size,virtual_size);
+  }
   pack(-1,(long)0,fp);
   i = pack(-2,(long)0,fp);
   fclose(fp);
   
   t = clock() - t;
   time_taken = ((double)t)/CLOCKS_PER_SEC;
-
-
+	
+	
   printf("\n\n Zero_alfa_transformations   : %d\n",zero_alfa_transform);
   printf(" Number of transformations   : %d\n",transforms);
   printf(" Number of comparisons       : %ld\n",comparisons);
@@ -319,6 +606,35 @@ int main(int argc, char **argv)
   printf(" To execute Compression tooks: %f sec  \n", time_taken);
   printf(" %d bytes written in %s\n",i,fileout);
 
+
+
+    char rows[10], cols[10];
+  sprintf(rows,"%d",image_width);
+  sprintf(cols,"%d",image_height);
+  char *token ;
+  int tok_count = 1;
+  token = strtok(filein,"/");
+  while(token != NULL && ++tok_count != 4){
+   // printf("token: %s\n",token);
+    token = strtok(NULL, "/");
+   
+  }
+  
+  
+  char image_name[strlen(token) + strlen(rows)+strlen(cols)+4];
+  strcat(image_name,token);
+  strcat(image_name,"(");
+ 
+  strcat(image_name,rows);
+  strcat(image_name," x ");
+  strcat(image_name,cols);
+  strcat(image_name,")");
+  FILE *outFile = fopen("./result/m_fisher/t_rms/output.csv","a+");
+  fprintf(outFile,"%s\t%d\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t",image_name,SHIFT,T_RMS,time_taken,T_ENT,T_VAR,entropy(image_width,image_height,0,0),variance(image_width,image_height,0,0),COMPRESS,BPP);
+  printf("Compress: %g \t Bpp: %g\n",COMPRESS,BPP);
+  // printf("%s\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t",image_name,SHIFT,T_RMS,time_taken,T_ENT,T_VAR,entropy(image_width,image_height,0,0),variance(image_width,image_height,0,0),COMPRESS,BPP);
+  fflush(outFile);
+  fclose(outFile);
   if(qtree) 
     writeimage_pgm("quadtree.pgm",qtt,image_width,image_height); 
 

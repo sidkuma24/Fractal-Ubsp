@@ -55,21 +55,26 @@ void help_enc()
   "\n Usage: encmars [-options] [inputfile [outputfile]]"
   "\n Supported options:\n"
   " --------------------------------------------------------------------------\n"
-  " -F   Fisher method          (Off)   -X   Hurtgen method              (Off)\n"
-  " -Z   Saupe-Fisher method    (Off)   -S   Saupe method                (Off)\n"
-  " -Y   Saupe-MC method        (Off)   -C   MassCenter method           (On) \n"
-  " -e # Entropy threshold      (8.0)   -d # Domain step                 (4)  \n"
-  " -r # Rms threshold          (8.0)   -a # Adaptive factor             (1.0)\n"
-  " -v # Variance threshold     (Inf)   -W # Image width                 (512)\n"
-  " -m # Min range size         (4)     -H # Image height                (512)\n"
-  " -M # Max range size         (16)    -l # Matches in a kd-tree query  (50) \n"
-  " -f   Full 1^ class search   (Off)   -p # Epsilon in a kd-tree query  (2.0)\n"
-  " -s   Full 2^ class search   (Off)   -k # Shrunk factor in MC method  (1.0)\n"
-  " -c # Num of Saupe features  (16)    -n # Number of MC classes        (50) \n"
-  " -A # Num of bits for alfa   (4)     -B # Number of bits for beta     (7)  \n"
-  " -y # Max value of alfa      (1.0)   -Q   Output a quadtree image     (Off)\n"
-  " -z # Force alfa to be 0     (0)     -h   Display this help \n"
-  " -FN  Nonlinear Fisher               -FL Luminence Invarient Fisher     \n\n"
+  " -F   Fisher method              (Off)   -X   Hurtgen method              (Off)\n"
+  " -Z   Saupe-Fisher method        (Off)   -S   Saupe method                (Off)\n"
+  " -Y   Saupe-MC method            (Off)   -C   MassCenter method           (On) \n"
+  " -e # Entropy threshold          (8.0)   -d # Domain step                 (4)  \n"
+  " -r # Rms threshold              (8.0)   -a # Adaptive factor             (1.0)\n"
+  " -v # Variance threshold         (Inf)   -W # Image width                 (512)\n"
+  " -m # Min range size             (4)     -H # Image height                (512)\n"
+  " -M # Max range size             (16)    -l # Matches in a kd-tree query  (50) \n"
+  " -f   Full 1^ class search       (Off)   -p # Epsilon in a kd-tree query  (2.0)\n"
+  " -s   Full 2^ class search       (Off)   -k # Shrunk factor in MC method  (1.0)\n"
+  " -c # Num of Saupe features      (16)    -n # Number of MC classes        (50) \n"
+  " -A # Num of bits for alfa       (4)     -B # Number of bits for beta     (7)  \n"
+  " -y # Max value of alfa          (1.0)   -Q   Output a quadtree image     (Off)\n"
+  " -z # Force alfa to be 0         (0)     -h   Display this help                \n"
+  " -B   Basic fractal coding       (off)                                         \n"
+  " -FL  Luminance invariant Fisher (off)   -FS  standard dev. based class.  (off)\n"
+  " -FE  Entropy based class        (off)   -FC covariance based classification   \n"
+  " -FN  Fisher Method with non-linear error estimation                           \n"
+  " -FQ  Fisher Classificaition and adaptive quadtree patitioning                 \n"                                 
+  " -FHV  Fisher Classificaition and HV partitioning.                             \n"                                 
   " Supported image format: raw and pgm\n"
   " Default input file : lena.raw\n"
   " Default output file: lena.ifs\n\n"
@@ -90,6 +95,8 @@ void help_dec()
         " -r   Output image in raw format  (Off)\n"
         " -d   Display image with xv       (Off)\n"
         " -z # Zoom factor                 (1.0)\n"
+        " -i2  Iterative decoding with proposed \n"
+        "      modifications.                   \n"
         " -h   Display this help \n\n"
         " Default input file : lena.ifs\n"
         " Default output file: lena.dec.pgm\n\n"
@@ -124,9 +131,55 @@ void getopt_enc(int argc, char **argv)
                          method = LumInv_Fisher;
                          isLumInv = 1;
                          break; 
-                }
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'T')){
+                         method = testing_Fisher;
+                         isTesting = 1;
+                         break;
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'S')){
+                         method = Fisher_std;
+                         break;
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'B')){
+                         method = BasicFIC;
+                         break;
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'E')){
+                         method = Entropy_based;
+                         break;
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'V')){
+                         method = CoVar;
+                         break; 
+                }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'Q')){
+                         method = Fisher_adaptiveQuadtree;
+                         partition_type = AdaptiveQuadtree;
+                         // method = fisher;  
+                         break;
+                 }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'M')){
+                         method = modified_Fisher;
+                         break;
+                  }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'M') && (argv[i][2] == '1')){
+                         method = modified_Fisher1;
+                         break;
+                  }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'M') && (argv[i][2] == '2')){
+                         method = modified_Fisher2;
+                         break;
+                  }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'M') && (argv[i][2] == '3')){
+                         method = modified_Fisher3;
+                         break;
+                }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'H') && (argv[i][3] == 'V')){
+                         method = Fisher_HV;
+                         partition_type = HV;
+                         isHV = 1;
+                         break;                  
+                }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'V') && (argv[i][3] == '1')){
+                         method = CoVar1;
+                         break;                  
+                }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'V') && (argv[i][3] == '2')){
+                         method = CoVar2;
+                         isCovar2 = 1;
+                         break;                  
+                }else {
                          method = Fisher;        
                          break;
+                }
                case 'X': method = Hurtgen;
                          break;
                case 'Z': method = SaupeFisher;
@@ -158,6 +211,7 @@ void getopt_enc(int argc, char **argv)
                          if(min_size < 2 || min_size > 64)
                             fatal("\n -m flag not in the range [2,64]");
                          num = min_size;
+                         MIN_ADAP_D_BITS = (int)log2(min_size);
 			 while(num > 2) { 
 			   if((num % 2)) fatal("\n -m flag not a power of two");
                            num /= 2;
@@ -168,6 +222,7 @@ void getopt_enc(int argc, char **argv)
                          if(max_size < 2 || max_size > 64) 
                             fatal("\n -M flag not in the range [2,64]");
                          num = max_size;
+                         MAX_ADAP_D_BITS = (int)log2(max_size);
 			 while(num > 2) { 
 			   if((num % 2)) fatal("\n -m flag not a power of two");
                            num /= 2;
@@ -230,7 +285,7 @@ void getopt_enc(int argc, char **argv)
                          break;
                case 'Q': qtree = 1;
                          break;
-               case 'h':
+               case 'h':  
                default : help_enc();
                          exit(-1);
      }
@@ -269,8 +324,14 @@ void getopt_dec(int argc, char **argv)
                          break;
                case 'q': quality = 1;
                          break;
-               case 'i': piramidal = 0;
-                         break;
+               case 'i': 
+                if(strlen(argv[i]) == 3 && argv[i][2] == '2'){
+                        piramidal = 0;
+                        iterDec2 = 1;
+                }else{
+                         piramidal = 0;
+                } 
+                break;
                case 'r': raw_format = 1;
                          break;
                case 'd': display = 1;

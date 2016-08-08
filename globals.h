@@ -105,7 +105,9 @@ struct c {
 	   double sum2;
      double sum3;
      double sum4;
-     short iso;
+     double var;
+     int iso;
+
 	   struct c *next;
 	 };
 
@@ -116,6 +118,8 @@ struct t_node {
            double rrx;
            double rry;
            short size;
+           int  x_size;
+           int y_size;
            double dx;
            double dy;
            short um;  // for color image: uchannel mean
@@ -138,14 +142,27 @@ EXTERN int iterations   INIT(= 10);
 EXTERN int postproc     INIT(= 0);
 EXTERN int quality      INIT(= 0);
 EXTERN int piramidal    INIT(= 1);
+EXTERN int iterDec2     INIT(= 0);
 EXTERN int raw_format   INIT(= 0);
 EXTERN int display      INIT(= 0);
 EXTERN double zoom      INIT(= 1.0);
 
 EXTERN PIXEL **image1;
+EXTERN PIXEL **init_image;
+EXTERN double max_std_arr[8];
+EXTERN double max_ent_arr[8];
+EXTERN int final_max_std INIT(=0);
+EXTERN double final_max_ent INIT(=0);
+EXTERN int final_max_ent_q INIT(=0);
+EXTERN int save_count INIT(=0);
 
 EXTERN struct c ***class_polar[8];
 EXTERN struct c *class_fisher[8][3][24];
+// EXTERN struct c **class_std[8][3];
+EXTERN struct c *class_std[8][3][255];
+EXTERN struct c **class_entropy[8][3];
+EXTERN struct c *class_basicFIC[8][3];
+// EXTERN struct c *class_fisher[8][3][240];
 EXTERN struct c *class_hurtgen[8][16][24];
 
 EXTERN kdtree  ***class_polar_saupe[8];
@@ -162,19 +179,21 @@ EXTERN int n_features INIT(= 16);
 EXTERN int shrunk_factor_mc INIT(= 1);
 EXTERN int shrunk_factor_saupe INIT(= 0);
 
-EXTERN int N_BITALFA  INIT(=  4);
+EXTERN int N_BITALFA  INIT(=  5);
 EXTERN int N_BITBETA  INIT(=  7);
 
 /* for nonlinear error checking */
 EXTERN int N_BITALFA1 INIT(=  5);
 EXTERN int N_BITALFA2  INIT(=  5);
 EXTERN int N_BITBETA2 INIT(=  8);
-EXTERN int N_BITRMEAN INIT(=  8);
+EXTERN int N_BITRMEAN INIT(=  7);
+
 
 EXTERN double MAX_ALFA  INIT(=  1.0);
+EXTERN int MAX_BITS  INIT(=  4);
 EXTERN double MAX_ALFA1  INIT(=  1.5);
 EXTERN double MAX_ALFA2 INIT(=  0.015);
-EXTERN int min_size INIT(= 4);
+EXTERN int min_size INIT(= 2);
 EXTERN int max_size INIT(= 16);
 EXTERN int image_width     INIT(= 512);
 EXTERN int image_height    INIT(= 512);
@@ -205,8 +224,8 @@ EXTERN long comparisons INIT(= 0);
 EXTERN int transforms INIT(= 0);
 EXTERN int zeroalfa;
 
-EXTERN char filein[50];
-EXTERN char fileout[50];
+EXTERN char filein[100];
+EXTERN char fileout[100];
 
 EXTERN PIXEL **image;
 EXTERN PIXEL **image_uch;
@@ -217,11 +236,48 @@ EXTERN double **range;
 EXTERN double **range_tmp;
 EXTERN double **flip_range;
 EXTERN double (*Coding) (int, int, int, int*, int*, int*, int*, int*);
+EXTERN double (*testing_Coding) (int, int, int, int*, int*, int*, int*, int*);
 EXTERN double (*LumInv_Coding) (int, int, int, int*, int*, int*, int*, int*);
 EXTERN double (*Nonlinear_Coding) (int, int, int, int*, int*, int*, int*, int*,int* );
 EXTERN void (*Indexing) (int, int);
 EXTERN int method INIT(= MassCenter);
 EXTERN int isColor INIT(= 0);
 EXTERN int isNonlinear INIT(=0);
+EXTERN int isTesting INIT(=0);
 EXTERN int isLumInv INIT(=0);
+EXTERN int isCovar2 INIT(=0);
 EXTERN int zero_alfa_count INIT(=0);
+EXTERN double BPP INIT(=0);
+EXTERN double COMPRESS INIT(=0);
+EXTERN double max_adaptive_error INIT(=0.1);
+EXTERN double range_error INIT(=0);
+
+/* for adaptive quadtree */
+extern int DOMAIN_X_BITS;
+extern int DOMAIN_Y_BITS;
+extern int MIN_ADAP_D_BITS INIT(=  0); // min size = 2;
+extern int MAX_ADAP_D_BITS INIT(=  3); // max size = 64; i.e 2^6
+EXTERN struct c* adaptive_fisher_class[64][64][24];
+EXTERN void (*adaptiveIndexing) (int, int);
+extern int MIN_ADAP_R_BITS INIT(=  MIN_ADAP_R_BITS);
+extern int MAX_ADAP_R_BITS INIT(=  MAX_ADAP_D_BITS );
+
+EXTERN double (*adaptiveCoding) (int, int, int, int,int*, int*, int*, int*, int*);
+
+EXTERN int **cum_range;
+EXTERN int **cum_range2;
+EXTERN int **L1_var_limits;
+EXTERN int *L1_class_width;
+EXTERN int N_L1_CLASSES INIT(=24); 
+EXTERN int N_L2_CLASSES INIT(=24); 
+
+EXTERN int partition_type INIT(= Quadtree);
+
+EXTERN double max_error2 INIT(=100);
+
+
+/* HV parition */
+EXTERN void (*HV_Indexing) (int, int);
+EXTERN struct c* HV_fisher_class[64][64][24];
+EXTERN double (*HV_Coding) (int, int, int, int,int*, int*, int*, int*, int*);
+EXTERN int isHV INIT(=0);

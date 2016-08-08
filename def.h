@@ -69,6 +69,24 @@
 #define McSaupe        5 
 #define Nonlinear_Fisher 6
 #define LumInv_Fisher 7
+#define testing_Fisher 8
+#define Fisher_std 9
+#define BasicFIC 10
+#define Entropy_based 11
+#define CoVar 12
+#define CoVar1 13
+#define CoVar2 14
+#define adaptive_search 15
+#define Fisher_adaptiveQuadtree 16
+#define Fisher_HV 17
+#define modified_Fisher 18
+#define modified_Fisher1 19
+#define modified_Fisher2 20
+#define modified_Fisher3 21
+
+#define Quadtree 1
+#define AdaptiveQuadtree 2
+#define HV 3
 
 
 #define TWOPI 6.2831853 
