@@ -626,10 +626,16 @@ void read_transformations_nonlinear(int atx,int aty,int size)
       }
 
       /* Compute alfa from the quantized value */
+<<<<<<< HEAD
        // alfa1 = (qalfa1 - 15) * 0.1;
        // alfa2 = (qalfa2 - 15) * 0.001;
       alfa1 = (double) qalfa1 / (double)(1 << N_BITALFA1) * ( MAX_ALFA1) ;
       alfa2 = (double) qalfa2 / (double)(1 << N_BITALFA2) * ( MAX_ALFA2) ;
+=======
+       alfa1 = (qalfa1 - 15) * 0.1;
+       alfa2 = (qalfa2 - 15) * 0.001;
+      
+>>>>>>> 4d466d691a1cbf5bc45d429a910f079a7d690d53
 
       
       /* Compute beta from the quantized value */

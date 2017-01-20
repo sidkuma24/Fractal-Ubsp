@@ -587,6 +587,7 @@ for(int r=0; r < virtual_size; ++r)
   // printf(" Color              : %s\n\n", isColor?"True":"False");
 
   if(isNonlinear)
+    
     Nonlinear_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
   else if(isLumInv)
     LumInv_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);

@@ -584,6 +584,14 @@ double CovClass_AdaptiveSearch_FisherCoding(int atx,int aty,int size,int *xd,int
   double t2 = 0.0;
   double s1 = 0.0;
   double s2 = 0.0;
+<<<<<<< HEAD
+=======
+  double s3 = 0.0;
+  double s4 = 0.0;
+  double test_s1 = 0.0;
+double alfa1_min =0.0, beta_min=0.0, error_min = 0.0,alfa2_min = 0.0;
+
+>>>>>>> 4d466d691a1cbf5bc45d429a910f079a7d690d53
   register double pixel;
   struct c *pointer;
   double alfa_min =0.0, beta_min=0.0, error_min = 0.0;
@@ -690,6 +698,7 @@ double CovClass_AdaptiveSearch_FisherCoding(int atx,int aty,int size,int *xd,int
         }
 
         /* Compute the scalig factor */
+<<<<<<< HEAD
         det = s2*s0 - s1*s1;
         if(det == 0.0)
            alfa = 0.0;
@@ -745,13 +754,130 @@ double CovClass_AdaptiveSearch_FisherCoding(int atx,int aty,int size,int *xd,int
               *qalf = qalfa;
               *qbet = qbeta;
           }
+=======
+      
+        double r = t0/s0;
+        double d = s1/s0;
+        double d2 = s2/s0;
+        double d3 = s3/s0;
+        double d4 = s4/s0;
+        double rd = t1/s0;
+        double rd2 = t3/s0;
+        int flag1 = 0, flag2 = 0;
+        
+        det1 = (((d2*d) - d3) * ((d2*d) - d3)) - (((d*d) - d2) * ((d2 * d2) - (d*d*d*d))) ;
+        
+        if(det1 == 0.0)
+          alfa1 = 0.0;
+        else
+          alfa1 = ((rd - r*d) * (d2 * d2 - d4) - (rd2 - d2*r)*(d2*d - d3))/det1;
+        if(alfa1 < 0.0) alfa1 = 0.0;
+        alfa1  = alfa1 * 100;
+        
+       //printf("alfa1 = %f\n",alfa1);
+
+        det2 = d4 - (d2 * d2);
+       // printf("det2 = %f\n",det2);
+        if(det2 == 0.0)
+          alfa2 = 0.0;
+        else
+          alfa2 = (rd2 - r*d2 + alfa1*(d*d2 - d3))/det2 ;
+        if(alfa2 < 0.0) alfa2 = 0.0;
+        // printf("alfa2 = %f\n\n",alfa2);
+       
+      //  printf("Det1= %f\n",det1);
+     //  printf("Alfa1 = %f\n",alfa1);
+        
+      //  printf("Alfa2 = %f\n\n",alfa2);
+
+        /* Quantize the scalig factors */
+        qalfa1 = quan(alfa1/0.1) + 15;
+    
+
+       // qalfa1 = 0.5 + (alfa1 )/( MAX_ALFA)* (1 << N_BITALFA1);
+       // if(qalfa1 < 0)  qalfa1 = 0;
+       // if(qalfa1 >= (1 << N_BITALFA1))  qalfa1 = (1 << N_BITALFA1) - 1;
+
+     /* Compute the scalig factor back from the quantized value*/
+       // alfa1 = (double) qalfa1 / (double)(1 << N_BITALFA1) * ( MAX_ALFA) ;
+
+
+     //   qalfa2 = 0.5 + (alfa2 )/( MAX_ALFA)* (1 << N_BITALFA2);
+     //   if(qalfa1 < 0)  qalfa1 = 0;
+     //   if(qalfa1 >= (1 << N_BITALFA1))  qalfa1 = (1 << N_BITALFA2) - 1;
+
+     // /* Compute the scalig factor back from the quantized value*/
+     //   alfa2 = (double) qalfa2 / (double)(1 << N_BITALFA2) * ( MAX_ALFA) ;
+       
+          qalfa2 = quan(alfa2/0.001) + 15;
+        
+       
+        /* Compute the scalig factor back from the quantized value*/
+        alfa1 = (qalfa1 - 15) * 0.1;
+        alfa2 = (qalfa2 - 15) * 0.001;
+        
+        // printf("Alfa1 = %f\n",alfa1);
+        
+        // printf("Alfa2 = %f\n",alfa2);
+               
+
+        /* Compute the offset */
+        // beta= (t0 - alfa*s1) / s0;
+        // if (alfa > 0.0)  beta += alfa * 255;
+        int flag_beta = 0;
+        beta = r - (alfa1 * d) - (alfa2 * d2);
+        if(beta <0.0 ) beta = 0.0;
+       
+      //  printf("beta: %f\n",beta);
+        /* Quantize the offset */
+           qbeta = quan(beta) + 128;
+             
+    
+        /* Compute the offset back from the quantized value*/
+       beta = (qbeta - 128);
+        // printf("beta = %f\n\n\n",beta);
+     //    qbeta = 0.5 + beta/ ((1.0+fabs(alfa1))*255)*((1 << N_BITBETA2)-1);
+     // if (qbeta< 0) qbeta = 0;
+     // if (qbeta >= 1 << N_BITBETA2) qbeta = (1 << N_BITBETA2)-1;
+
+     /* Compute the offset back from the quantized value*/
+     // beta = (double)qbeta/(double)((1 << N_BITBETA2)-1)*((1.0+fabs(alfa1))*255);
+     // if (alfa1 > 0.0) beta  -= alfa1 * 255;
+    
+
+        /* Compute the rms distance */
+        // sum = t2 - 2*alfa*t1 -2*beta*t0 + alfa*alfa*s2 +
+        //                       2*alfa*beta*s1 + s0*beta*beta;
+
+       sum = (t2 + alfa1 * alfa1 *s2) + (alfa2 *alfa2 * s2) + (beta *beta)  
+                   - 2 * ((alfa1 * t1) - (alfa2 * beta * s1) + (alfa2 * t3) + (beta * s1) - (alfa1 * alfa2 * s3) - (beta * alfa1 * s1));
+       dist = sqrt(sum / s0);
+        
+       //
+        if(dist < min ) {
+            min = dist;
+            error_min = min;
+            alfa1_min = alfa1;
+            alfa2_min = alfa2;
+            beta_min = beta;
+            *xd = pointer->ptr_x;
+            *yd = pointer->ptr_y;
+            *is = isometry;
+            *qalf1 = qalfa1;
+            *qalf2 = qalfa2;
+            *qbet = qbeta;
+>>>>>>> 4d466d691a1cbf5bc45d429a910f079a7d690d53
         }
         pointer = pointer -> next;
       }
     }
   }
+<<<<<<< HEAD
  // printf("%f \t %f \t %f\n",alfa_min,beta_min,error_min);
  // printf("Zero alfa count = %d\n",zero_alfa_count);
+=======
+ // printf("%f \t %f \t %f \t %f\n",alfa1_min,alfa2_min,beta_min,error_min);
+>>>>>>> 4d466d691a1cbf5bc45d429a910f079a7d690d53
  return (min) ;
 }
 //as_fisher
@@ -3280,7 +3406,11 @@ double adaptiveFisherCoding(int atx,int aty,int x_size,int y_size,int *xd,int *y
    // printf("%f \t %f \t %f\n",alfa_min,beta_min,error_min);
         // printf("min=%f\n",min);
 
+<<<<<<< HEAD
    // printf("Zero alfa count = %d\n",zero_alfa_count);
+=======
+//printf("%f \t %f \t %f",alfa_min,beta_min,error_min);
+>>>>>>> 4d466d691a1cbf5bc45d429a910f079a7d690d53
  return (min) ;
 }
 
