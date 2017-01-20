@@ -180,3 +180,7 @@ double modified_FisherCoding_1(int atx,int aty,int size,int *xd,int *yd,int *is,
                                                        int* qalf,int *qbet);
 double modified_FisherCoding_2(int atx,int aty,int size,int *xd,int *yd,int *is,
                                                        int* qalf,int *qbet);
+
+
+/* progressive fractal coding */
+

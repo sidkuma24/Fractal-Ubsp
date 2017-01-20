@@ -1,5 +1,5 @@
-/******************************************************************************
- ==============================================================================
+
+ /*==============================================================================
 
              '`
             '--`        Mars -- A quadtree based fractal image
@@ -45,7 +45,8 @@
 #include "prot.h"
 
 FILE *fparam = fopen("param.txt","w");
-
+FILE *filePtr = fopen("scaling_factor_proposed.txt","w");
+FILE *filePtr1 = fopen("scaling_factor_original.txt","w");
 
 double HV_FisherCoding(int atx, int aty, int x_size, int y_size, int *xd, int *yd, int *is, 
                                                      int *qalf, int *qbet)
@@ -217,12 +218,13 @@ double HV_FisherCoding(int atx, int aty, int x_size, int y_size, int *xd, int *y
         beta = (double)qbeta/(double)((1 << N_BITBETA)-1)*((1.0+fabs(alfa))*255);
         if (alfa > 0.0) beta  -= alfa * 255;
 
+        // printf("alfa = %f \tbeta = %f \n",alfa,beta );
         
         /* Compute the rms distance */
         sum = t2 - 2*alfa*t1 -2*beta*t0 + alfa*alfa*s2 +
                               2*alfa*beta*s1 + s0*beta*beta;
         dist = sqrt(sum / s0);
-
+        // printf("dist = %f\n",dist);
         // printf("error = %f\n",sum);
         if(dist < min ) {
             // printf("error2 = %f\n",sum);
@@ -242,6 +244,7 @@ double HV_FisherCoding(int atx, int aty, int x_size, int y_size, int *xd, int *y
         // printf("min=%f\n",min);
 
    // printf("Zero alfa count = %d\n",zero_alfa_count);
+  // printf("min err = %f",min);
  return (min) ;
 }
 
@@ -257,27 +260,43 @@ void HV_traverseImage(int atx, int aty, int x_size, int y_size)
   // printf("s_size = %d\n",s_size);
 
   // printf("s_log = %d\n",s_log);
+  // printf("max bits=%d\n",max_bits );
   if(s_log > max_bits){
+    for(int k=aty; k < aty + s_size; ++k){
+      hv[atx+s_size/2][k] = 0;
+    }
+
+    for(int k=atx; k < atx + s_size; ++k){
+      hv[k][aty+s_size/2] = 0;
+    }
     HV_traverseImage(atx,          aty,          s_size/2, s_size/2);
     HV_traverseImage(atx+s_size/2, aty,          s_size/2, s_size/2);
     HV_traverseImage(atx,          aty+s_size/2, s_size/2, s_size/2);
     HV_traverseImage(atx+s_size/2, aty+s_size/2, s_size/2, s_size/2);
   }
   else{
+    // printf("x=%d\n", x_size);
+    // printf("y=%d\n", y_size);
+    printf("Partition size = %d x %d\n",x_size,y_size);
     HV_compressRange(atx,aty, x_size, y_size);
   }
 
-  if(x_size > s_size)
+  if(x_size > s_size){
+    for(int k=aty; k <aty+s_size ; ++k )
+      hv[atx+s_size][k] = 0;
     HV_traverseImage(atx+s_size,aty,x_size - s_size, y_size);
-  
-  if(y_size > s_size)
+  }
+  if(y_size > s_size){
+    for(int k=atx; k <atx+s_size ; ++k )
+      hv[k][aty+s_size] = 0;
     HV_traverseImage(atx, aty + s_size,s_size, y_size - s_size);
+  }
 }
 
 void HV_compressRange(int atx, int aty, int x_size, int y_size)
 {
   // printf("isnide compress range:\n");
-  printf("x_size = %d \t y_size = %d\n",x_size,y_size);
+  // printf("x_size = %d \t y_size = %d\n",x_size,y_size);
   int domx,domy,isom,qalfa,qbeta;
   static int coded = 0;
   static int oldper = 0;
@@ -286,12 +305,12 @@ void HV_compressRange(int atx, int aty, int x_size, int y_size)
   int bytes;
   int k;
   // printf("X size = %d \t Y size = %d \n",x_size,y_size);
-  if(x_size == 0 || y_size == 0)
+  if(x_size == 1 || y_size == 1)
     return;
 
   double best_rms;
   best_rms = HV_FisherCoding(atx,aty,x_size,y_size,&domx,&domy,&isom,&qalfa,&qbeta);
-  printf("Best RMS = %f\n\n",best_rms);
+  // printf("Best RMS = %f\n\n",best_rms);
   if(min_2(x_size,y_size) == min_size  || best_rms < T_RMS){
     // printf("packing bits \n");
     if(max_2(x_size,y_size) !=  min_size)
@@ -337,16 +356,16 @@ void HV_compressRange(int atx, int aty, int x_size, int y_size)
     int i,j,y1,y2,Rp,x1,x2,Cp;
     double hmax,vmax,v,h;
     hmax=vmax=0;
-    int step = 2;
+    int step = 1;
     Cp=atx;
     Rp=aty;
-    for(j=aty;j<aty+y_size-1;j+=1)
+    for(j=aty;j<aty+y_size-step;j+=step)
     {
           y1=y2=0;
-          for(i=atx;i<atx+x_size;i+=1)
+          for(i=atx;i<atx+x_size;i+=step)
           {
                 y1=y1+image[j][i];
-                y2=y2+image[j+1][i];
+                y2=y2+image[j+step][i];
           }
           h=(min_2(j-aty+1,y_size-j-1+aty)*abs(y1-y2))/(double)(y_size);
           if(h>hmax)
@@ -355,13 +374,13 @@ void HV_compressRange(int atx, int aty, int x_size, int y_size)
                 Rp=j;
           }
     }
-    for(i=atx;i<atx+x_size-1;i+=1)
+    for(i=atx;i<atx+x_size-step;i+=step)
     {
           x1=x2=0;
-          for(j=aty;j<aty+y_size;j+=1)
+          for(j=aty;j<aty+y_size;j+=step)
           {
                 x1=x1+image[j][i];
-                x2=x2+image[j][i+1];
+                x2=x2+image[j][i+step];
           }
           v=(min_2(i+1-atx,x_size-i-1+atx)*abs(x1-x2))/(double)(x_size);
           if(v>vmax)
@@ -735,7 +754,7 @@ double CovClass_AdaptiveSearch_FisherCoding(int atx,int aty,int size,int *xd,int
  // printf("Zero alfa count = %d\n",zero_alfa_count);
  return (min) ;
 }
-
+//as_fisher
 double AdaptiveSearch_FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
                                                        int* qalf,int *qbet)
 {
@@ -2252,7 +2271,7 @@ double modified_FisherCoding_2(int atx,int aty,int size,int *xd,int *yd,int *is,
   int isom,clas, var_class;
   int start_first, end_first, fisher_first;
   int start_second, end_second,fisher_second;
-  double dist,alfa,beta, sd_r, sd_d;
+  double dist,alfa,beta, sd_r, sd_d, proposed_alfa;
   double min = 1000000000.0;
   double sum,s0;
   double mean,det;
@@ -2288,7 +2307,8 @@ double modified_FisherCoding_2(int atx,int aty,int size,int *xd,int *yd,int *is,
   newclass(size,range,&isom,&clas);
   flips(size,range,flip_range,isom);
   var_class = variance_class(size,flip_range);
-
+  // var_class = std_class(size,flip_range);
+  // printf("std class =  %d\n",var_class); 
   if (full_first_class) {
       start_first = 0;
       end_first   = 3;
@@ -2303,8 +2323,8 @@ double modified_FisherCoding_2(int atx,int aty,int size,int *xd,int *yd,int *is,
       end_second   = 24; 
   }
   else { 
-      start_second = var_class;
-      end_second   = var_class + 1;
+      start_second = var_class ;
+      end_second   = var_class +1;
   } 
 
   for(fisher_first = start_first; fisher_first < end_first; fisher_first ++) 
@@ -2320,48 +2340,7 @@ double modified_FisherCoding_2(int atx,int aty,int size,int *xd,int *yd,int *is,
         i = pointer->ptr_x >> 1;
         j = pointer->ptr_y >> 1;
         sd_d = sqrt(pointer->var);
-        switch(isometry) { 
-         case IDENTITY   :  
-                 for(x=0;x< size;x++)
-                 for(y=0;y< size;y++)
-                     t1 += contract[x+i][y+j]*range[x][y];
-                 break;
-         case R_ROTATE90 :  
-                 for(x=0;x< size;x++)
-                 for(y=0;y< size;y++)
-                     t1 += contract[x+i][y+j]*range[y][size-x-1];
-                 break;
-         case L_ROTATE90 :  
-                 for(x=0;x< size;x++)
-                 for(y=0;y< size;y++)
-                     t1 += contract[x+i][y+j]*range[size-y-1][x];
-                 break;
-         case ROTATE180  :  
-                 for(x=0;x< size;x++)
-                 for(y=0;y< size;y++)
-                     t1 += contract[x+i][y+j]*range[size-x-1][size-y-1];
-                 break;
-         case R_VERTICAL :  
-                 for(x=0;x< size;x++)
-                 for(y=0;y< size;y++)
-                     t1 += contract[x+i][y+j]*range[x][size-y-1];
-                 break;
-         case R_HORIZONTAL: 
-                 for(x=0;x< size;x++)
-                 for(y=0;y< size;y++)
-                     t1 += contract[x+i][y+j]*range[size-x-1][y];
-                 break;
-         case F_DIAGONAL:   
-                 for(x=0;x< size;x++)
-                 for(y=0;y< size;y++)
-                     t1 += contract[x+i][y+j]*range[y][x];
-                 break;
-         case S_DIAGONAL:   
-                 for(x=0;x< size;x++)
-                 for(y=0;y< size;y++)
-                     t1 += contract[x+i][y+j]*range[size-y-1][size-x-1];
-                 break;
-        }
+        
 
         /* Compute the scalig factor */
         // det = s2*s0 - s1*s1;
@@ -2371,26 +2350,81 @@ double modified_FisherCoding_2(int atx,int aty,int size,int *xd,int *yd,int *is,
         else
           // alfa = (s0*t1 - s1*t0)  / det;
           alfa = sd_r /det;
+
         if(alfa < 0.0 ) alfa = 0.0;
+          proposed_alfa = alfa;
          // printf("before quantization alfa = %f\n",alfa);
         /* Quantize the scalig factor */
         // qalfa = 0.5 + (alfa )/( MAX_ALFA)* (1 << N_BITALFA);
-        qalfa =  0.5 +(alfa )/( MAX_ALFA)* (1 << N_BITALFA);
+        // qalfa =  0.5 +(alfa )/( MAX_ALFA)* (1 << N_BITALFA);
+        // if(qalfa < 0)  qalfa = 0;
+        // if(qalfa >= (1 << N_BITALFA))  qalfa = (1 << N_BITALFA) - 1;
+
+        // /* Compute the scalig factor back from the quantized value*/
+        // alfa = (double) qalfa / (double)(1 << N_BITALFA) * ( MAX_ALFA) ;
+//      
+        // if(alfa == 0)
+        //   zero_alfa_count++;
+        // printf("after deqauantization alfa = %f\n\n",alfa);
+       if((sd_r - (alfa * sd_d)) < (0.6 * sd_r)){    
+            switch(isometry) { 
+              case IDENTITY   :  
+               for(x=0;x< size;x++)
+               for(y=0;y< size;y++)
+                   t1 += contract[x+i][y+j]*range[x][y];
+               break;
+              case R_ROTATE90 :  
+               for(x=0;x< size;x++)
+               for(y=0;y< size;y++)
+                   t1 += contract[x+i][y+j]*range[y][size-x-1];
+               break;
+              case L_ROTATE90 :  
+               for(x=0;x< size;x++)
+               for(y=0;y< size;y++)
+                   t1 += contract[x+i][y+j]*range[size-y-1][x];
+               break;
+              case ROTATE180  :  
+               for(x=0;x< size;x++)
+               for(y=0;y< size;y++)
+                   t1 += contract[x+i][y+j]*range[size-x-1][size-y-1];
+               break;
+              case R_VERTICAL :  
+               for(x=0;x< size;x++)
+               for(y=0;y< size;y++)
+                   t1 += contract[x+i][y+j]*range[x][size-y-1];
+               break;
+              case R_HORIZONTAL: 
+               for(x=0;x< size;x++)
+               for(y=0;y< size;y++)
+                   t1 += contract[x+i][y+j]*range[size-x-1][y];
+               break;
+              case F_DIAGONAL:   
+               for(x=0;x< size;x++)
+               for(y=0;y< size;y++)
+                   t1 += contract[x+i][y+j]*range[y][x];
+               break;
+              case S_DIAGONAL:   
+               for(x=0;x< size;x++)
+               for(y=0;y< size;y++)
+                   t1 += contract[x+i][y+j]*range[size-y-1][size-x-1];
+               break;
+            }
+          /*recompute accurate scaling */
+          // det = s2*s0 - s1*s1;
+          // if(det == 0.0)
+          //   alfa = 0.0;
+          // else
+          //   alfa = (s0*t1 - s1*t0)  / det;
+          // if(alfa < 0.0 ) alfa = 0.0;
+          qalfa =  0.5 +(alfa )/( MAX_ALFA)* (1 << N_BITALFA);
         if(qalfa < 0)  qalfa = 0;
         if(qalfa >= (1 << N_BITALFA))  qalfa = (1 << N_BITALFA) - 1;
 
         /* Compute the scalig factor back from the quantized value*/
         alfa = (double) qalfa / (double)(1 << N_BITALFA) * ( MAX_ALFA) ;
-//      
-        if(alfa == 0)
-          zero_alfa_count++;
-        // printf("after deqauantization alfa = %f\n\n",alfa);
-       if((sd_r - (alfa * sd_d)) < (0.6 * sd_r)){    
-
           /* Compute the offset */
           beta= (t0 - alfa*s1) / s0;
           if (alfa > 0.0)  beta += alfa * 255;
-
           /* Quantize the offset */
           qbeta = 0.5 + beta/ ((1.0+fabs(alfa))*255)*((1<< N_BITBETA)-1);
           if (qbeta< 0) qbeta = 0;
@@ -2420,6 +2454,8 @@ double modified_FisherCoding_2(int atx,int aty,int size,int *xd,int *yd,int *is,
               *is = isometry;
               *qalf = qalfa;
               *qbet = qbeta;
+            fprintf(filePtr, "%f\t%f\t%f\n",proposed_alfa,beta,range_error);
+
           }
         }
         pointer = pointer -> next;
@@ -2842,7 +2878,7 @@ double FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
      range[x][y] = pixel;
   }
   mean = t0 / s0;
-
+  sd_r = sqrt(variance_2(size,range,0,0));
   newclass(size,range,&isom,&clas);
   flips(size,range,flip_range,isom);
   var_class = variance_class(size,flip_range);
@@ -2922,14 +2958,20 @@ double FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
         }
 
         /* Compute the scalig factor */
+
+        double det2 = sqrt(pointer->var);
+        double max_alfa = 0.0;
+        if(det2 > 0.0) max_alfa = sd_r/det2;
+        // printf("max alfa = %f\n",max_alfa);
         det = s2*s0 - s1*s1;
-        // det = sd_d;
+        
         if(det == 0.0)
            alfa = 0.0;
         else
           alfa = (s0*t1 - s1*t0)  / det;
           // alfa = sd_r /det;
         if(alfa < 0.0 ) alfa = 0.0;
+        // printf("alfa = %f\n\n",alfa);
          // printf("before quantization alfa = %f\n",alfa);
         /* Quantize the scalig factor */
         // qalfa = 0.5 + (alfa )/( MAX_ALFA)* (1 << N_BITALFA);
@@ -2977,6 +3019,7 @@ double FisherCoding(int atx,int aty,int size,int *xd,int *yd,int *is,
             *is = isometry;
             *qalf = qalfa;
             *qbet = qbeta;
+            fprintf(filePtr1, "%f\t%f\t%f\n",alfa,beta,dist);
         }
         pointer = pointer -> next;
 
@@ -4083,7 +4126,7 @@ void testing_quadtree(int atx,int aty,int size,double tol_entr,
         }
 
         transforms ++;
-        coded += size * size ;
+        coded += size * size *3 ;
         newper = (int) (((double) coded / (image_width * image_height)) * 100);
         if(newper > oldper) {
            bytes = pack(-2,(long)0,fp);
@@ -4545,7 +4588,9 @@ void HV_patition(int atx,int aty,int size)
 }
 
 
-
+/*
+ * The original quadtree implementation
+ */
 
 void quadtree(int atx,int aty,int size,double tol_entr,
                                        double tol_rms,double tol_var)
@@ -4646,8 +4691,8 @@ void quadtree(int atx,int aty,int size,double tol_entr,
         newper = (int) (((double) coded / (image_width * image_height)) * 100);
         if(newper > oldper) {
            bytes = pack(-2,(long)0,fp);
-           compress =(double) coded / (double)bytes;
-           bpp      = 8.0 /compress;
+           compress =((double) coded*3.0) / (double)bytes;
+           bpp      = 8.0 /compress ;
            printf(" %d %% Coded, Compression %f:1, bpp %f\r", 
 			                                newper,compress,bpp);
            COMPRESS = compress;

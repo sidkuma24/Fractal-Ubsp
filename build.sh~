@@ -1,0 +1,35 @@
+
+result_file="./result/others/saupe/output.csv" #change here
+rm $result_file
+make
+echo "Image(W x H) \t Domain Density \tRMS Threshold \t Time Taken(s) \t Entropy Threshold \t Variance Threshold \t Image Entropy \t Image Variance \t Compression Ratio \t BPP \t SSIM \t PSNR " > $result_file
+
+for file in ./pgm/*
+do
+  #for i in 2 4 6 8 10 12 14 16 18 20
+  #do
+  
+  	
+  	outfile=$(echo $file | cut -d'/' -f 3)
+        file_type=$(echo $outfile | cut -d'.' -f 2)
+  	outfile=$(echo $outfile | cut -d'.' -f 1)
+  	outfile="./com/others/saupe/$outfile$i.ifs" #change here
+
+  	./fcom -S -d 2 -r 4 $file $outfile  #change here
+ 
+  	outfile1=$(echo $outfile | cut -d'/' -f 5)
+  	outfile1=$(echo $outfile1 | cut -d'.' -f 1)
+  	outfile1="./dcom/others/saupe/$outfile1.dec.$file_type" #change here
+    
+  	./fdcom -i $outfile $outfile1 -q 
+   ./qm $file $outfile1 > ./result/others/saupe/quality.txt #change here
+  TEMP=$(cat ./result/others/saupe/quality.txt | cut -d':' -f 2) # change here
+  SSIM=$(echo $TEMP | cut -d' ' -f 1)
+  PSNR=$(echo $TEMP | cut -d' ' -f 2)
+  echo "$SSIM \t $PSNR" >> $result_file
+  
+ # echo $outfile
+  #done	
+
+echo "" >> $result_file
+done

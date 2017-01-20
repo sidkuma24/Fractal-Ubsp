@@ -190,10 +190,10 @@ EXTERN int N_BITRMEAN INIT(=  7);
 
 
 EXTERN double MAX_ALFA  INIT(=  1.0);
-EXTERN int MAX_BITS  INIT(=  4);
+EXTERN int MAX_BITS  INIT(=  3);
 EXTERN double MAX_ALFA1  INIT(=  1.5);
 EXTERN double MAX_ALFA2 INIT(=  0.015);
-EXTERN int min_size INIT(= 2);
+EXTERN int min_size INIT(= 4);
 EXTERN int max_size INIT(= 16);
 EXTERN int image_width     INIT(= 512);
 EXTERN int image_height    INIT(= 512);
@@ -231,6 +231,7 @@ EXTERN PIXEL **image;
 EXTERN PIXEL **image_uch;
 EXTERN PIXEL **image_vch;
 EXTERN PIXEL **qtt;
+EXTERN PIXEL **hv;
 EXTERN double **contract;
 EXTERN double **range;
 EXTERN double **range_tmp;
@@ -281,3 +282,9 @@ EXTERN void (*HV_Indexing) (int, int);
 EXTERN struct c* HV_fisher_class[64][64][24];
 EXTERN double (*HV_Coding) (int, int, int, int,int*, int*, int*, int*, int*);
 EXTERN int isHV INIT(=0);
+
+
+/* progressive decoding */
+EXTERN int N_BITS INIT(=3);
+
+extern int class_count[24];

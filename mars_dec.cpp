@@ -43,11 +43,13 @@
 #include "globals.h"
 #include "triangle.h"
 #include "prot.h"
-#include <vector>
+//#include <vector>
+
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
+#include "GMRsaliency.h"
 
 
 
@@ -150,6 +152,12 @@ int main(int argc, char **argv)
     matrix_allocate(image_uch,2+image_width,2+image_height,PIXEL)
     matrix_allocate(image_vch,2+image_width,2+image_height,PIXEL)
   }
+
+  Mat img = imread("lenna.pgm", CV_LOAD_IMAGE_GRAYSCALE);
+  GMRsaliency GMRsal;
+  Mat sal=GMRsal.GetSal(img);
+
+  imwrite("sal_image.png",sal*255);
 
   if(isNonlinear){
     read_transformations_nonlinear(0,0,virtual_size);
@@ -262,10 +270,10 @@ int main(int argc, char **argv)
      smooth_image(); 
 
   if( isColor ){ // Conver to RGB
-    std::vector<cv::Mat> yuvChannels;
-    cv::Mat ych(image_height,image_width, CV_8U);
-    cv::Mat uch(image_height,image_width, CV_8U);
-    cv::Mat vch(image_height,image_width, CV_8U);
+    std::vector<Mat> yuvChannels;
+    Mat ych(image_height,image_width, CV_8U);
+    Mat uch(image_height,image_width, CV_8U);
+    Mat vch(image_height,image_width, CV_8U);
     yuvChannels.push_back(ych);
     yuvChannels.push_back(uch);
     yuvChannels.push_back(vch);
@@ -277,13 +285,12 @@ int main(int argc, char **argv)
         yuvChannels[2].at<uchar>(jjj,iii) = image_vch[jjj][iii];
       }
     }
-    cv::merge(yuvChannels, ych);
-    cv::cvtColor(ych, ych, CV_YUV2BGR);
+    merge(yuvChannels, ych);
+    cvtColor(ych, ych, CV_YUV2BGR);
     printf("Writing... output.dec.ppm");
-    cv::imwrite("output.dec.ppm", ych);
+    imwrite(fileout, ych);
     
   }
-
 
   if(display)  {
      if ( pipe(pipe_disp)) 
@@ -306,16 +313,20 @@ int main(int argc, char **argv)
      writeimage_pipe(output, image,image_width,image_height);
   } 
   else 
-    if(raw_format)  
-       writeimage_raw(fileout, image,image_width,image_height);
-    else
-      writeimage_pgm(fileout, image,image_width,image_height);
+    if(raw_format)  {}
+       // writeimage_raw(fileout, image,image_width,image_height);
+    else{}
+      // writeimage_pgm(fileout, image,image_width,image_height);
+    
+    
      
   free(image[0]);
   free(image1[0]);
 
   return 0;
 }
+
+
 
 
 void zooming(double scalefactor)
@@ -965,11 +976,25 @@ void read_transformations(int atx,int aty,int size)
         vm = (int)unpack(8,input);
       }
 
+      /* for progressive decoding */
+      int pqalfa = 0,pqbeta = 0;
+      for(int b=0; b < N_BITS; ++b){
+        if(N_BITS < N_BITALFA)
+          pqalfa |= qalfa & (1 << (N_BITALFA-b));
+        else
+          pqalfa = qalfa;
+
+        if(N_BITS < N_BITBETA)
+          pqbeta |= qbeta & (1 << (N_BITBETA-b));
+        else
+          pqbeta = qbeta;
+      }
+
       /* Compute alfa from the quantized value */
-      alfa = (double) qalfa / (double)(1 << N_BITALFA) * (MAX_ALFA) ;
+      alfa = (double) pqalfa / (double)(1 << N_BITALFA) * (MAX_ALFA) ;
       
       /* Compute beta from the quantized value */
-      beta = (double) qbeta/(double)((1 << N_BITBETA)-1)* ((1.0+fabs(alfa)) * 255);
+      beta = (double) pqbeta/(double)((1 << N_BITBETA)-1)* ((1.0+fabs(alfa)) * 255);
       if (alfa > 0.0) beta  -= alfa * 255;
          
       trans->alfa = alfa;
@@ -1716,8 +1741,8 @@ void iterative_decoding_new_init_image(int level,int n_iter,double zoo)
   zooming(z_factor);
   width  = (int) rint(image_width  * z_factor / zoo); 
   height = (int) rint(image_height * z_factor / zoo); 
-  // cv::Mat startImg;
-  // startImg = cv::imread("./filter/noise_free.png",CV_LOAD_IMAGE_GRAYSCALE);
+  // Mat startImg;
+  // startImg = imread("./filter/noise_free.png",CV_LOAD_IMAGE_GRAYSCALE);
   // if(first_time++ == 0)
      // for(i=0;i< height;i++)
      // for(j=0;j< width ;j++){ 
@@ -1881,8 +1906,8 @@ void iterative_decoding(int level,int n_iter,double zoo)
   zooming(z_factor);
   width  = (int) rint(image_width  * z_factor / zoo); 
   height = (int) rint(image_height * z_factor / zoo); 
-  // cv::Mat startImg;
-  // startImg = cv::imread("./filter/noise_free.png",CV_LOAD_IMAGE_GRAYSCALE);
+  // Mat startImg;
+  // startImg = imread("./filter/noise_free.png",CV_LOAD_IMAGE_GRAYSCALE);
   if(first_time++ == 0)
      for(i=0;i< height;i++)
      for(j=0;j< width ;j++){ 

@@ -155,19 +155,21 @@ void getopt_enc(int argc, char **argv)
                  }else if((strlen(argv[i]) == 3) && (argv[i][2] == 'M')){
                          method = modified_Fisher;
                          break;
-                  }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'M') && (argv[i][2] == '1')){
+                  }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'M') && (argv[i][3] == '1')){
                          method = modified_Fisher1;
                          break;
-                  }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'M') && (argv[i][2] == '2')){
+                  }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'M') && (argv[i][3] == '2')){
                          method = modified_Fisher2;
                          break;
-                  }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'M') && (argv[i][2] == '3')){
+                  }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'M') && (argv[i][3] == '3')){
                          method = modified_Fisher3;
                          break;
                 }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'H') && (argv[i][3] == 'V')){
                          method = Fisher_HV;
                          partition_type = HV;
                          isHV = 1;
+                         // min_size = 2;
+                         // max_size = 16;
                          break;                  
                 }else if((strlen(argv[i]) == 4) && (argv[i][2] == 'V') && (argv[i][3] == '1')){
                          method = CoVar1;
@@ -337,6 +339,8 @@ void getopt_dec(int argc, char **argv)
                case 'd': display = 1;
                          break;
        	       case 'z': zoom = atof(argv[++i]);
+                         break;
+               case 'b' : N_BITS = atoi(argv[++i]);
                          break;
                case 'h': 
                default : help_dec();

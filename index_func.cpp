@@ -47,9 +47,8 @@
 #include "def.h"
 #include "globals.h"
 #include "prot.h"
-#include "haar.h"
 
-
+int class_count[24];
 void HV_FisherIndexing(int x_size,int y_size)
 {
   int i,j,k,h;
@@ -61,9 +60,9 @@ void HV_FisherIndexing(int x_size,int y_size)
   register int x,y;
   struct c *node;
 
+
   matrix_allocate(domi,x_size,y_size,double)
   // matrix_allocate(flip_domi,x_size,y_size,double)
-  // int class_count[24] = {0};
 
   for(i=0;i< image_height - 2 * y_size +1 ;i+= SHIFT) {
     for(j=0;j< image_width - 2 * x_size +1 ;j+= SHIFT ) {
@@ -97,7 +96,7 @@ void HV_FisherIndexing(int x_size,int y_size)
       node -> var = variance_3(x_size,y_size,domi,0,0);
       node -> next  = HV_fisher_class[y_size][x_size][clas];
       HV_fisher_class[y_size][x_size][clas] = node;
-      // class_count[var_class]++;
+      class_count[clas]++;
       
     }
     printf(" Classification (Fisher) domain (%dx%d)  %d \r",x_size,y_size,count) ;
@@ -119,9 +118,7 @@ void HV_FisherIndexing(int x_size,int y_size)
     }
 
   printf("\n");
-  // for(int i = 0; i < 24; i++){
-  //   printf("Class %d count = %d\n",i,class_count[i]);
-  // }
+ 
 
   free(domi[0]);
   // free(flip_domi[0]);
@@ -253,7 +250,8 @@ int EnergyCoeff_class(int size,double **block)
 int std_class(int size, double **block)
 {
   double std = sqrt(variance_2(size,block,0,0));
-  return floor(std);
+  // printf("class = %d\n",(int)rint(std));
+  return (int)rint(std);
 }
 
 int ent_class(int size, double **block)
@@ -359,7 +357,7 @@ void adaptiveNewclass_2(int x_size, int y_size, double **block,
 {
   double a[4] = {0.0,0.0,0.0,0.0};
   int delta[3] = {6,2,1};
-  int class1  = 1;
+  int class1  = 0;
 
   if(x_size > 0 && y_size >0){
   for(int i=0; i < y_size/2; i++){
@@ -1317,7 +1315,7 @@ void STDIndexing(int size,int s)
       flips(size,domi,flip_domi,iso); 
 
       stdd_class = std_class(size,flip_domi);
-      if(stdd_class > final_max_std) stdd_class = final_max_std;
+      // if(stdd_class > final_max_std) stdd_class = final_max_std;
       // printf("std class= %d\n",stdd_class);
       node = (struct c *) malloc(sizeof(struct c));
       node -> ptr_x = i;
@@ -1374,7 +1372,7 @@ void EnergyCoeff_FisherIndexing(int size,int s)
   
   matrix_allocate(domi,size,size,double);
   matrix_allocate(flip_domi,size,size,double);
-  int class_count[24] = {0};
+  
   
   for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
     for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
@@ -1463,7 +1461,7 @@ void adaptiveFisherIndexing_2(int x_size,int y_size)
   L1_class_width = new int[MAX_ADAP_D_BITS + 1];
   matrix_allocate(domi,x_size,y_size,double)
   // matrix_allocate(flip_domi,x_size,y_size,double)
-  int class_count[24] = {0};
+  
   // printf("memory allocated\n");
   for(i=0;i< image_height - 2 * y_size +1 ;i+= SHIFT) {
     for(j=0;j< image_width - 2 * x_size +1 ;j+= SHIFT ) {
@@ -1544,7 +1542,7 @@ void adaptiveFisherIndexing(int x_size,int y_size,int x_s, int y_s)
   // printf("allocating memory\n");
   matrix_allocate(domi,x_size,y_size,double)
   matrix_allocate(flip_domi,x_size,y_size,double)
-  int class_count[24] = {0};
+  
   // printf("memory allocated\n");
   for(i=0;i< image_height - 2 * y_size +1 ;i+= SHIFT) {
     for(j=0;j< image_width - 2 * x_size +1 ;j+= SHIFT ) {
@@ -1620,7 +1618,7 @@ void FisherIndexing_2(int size,int s)
   partition_type = 1;
   matrix_allocate(domi,size,size,double)
   matrix_allocate(flip_domi,size,size,double)
-  int class_count[24] = {0};
+  
 
   for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
     for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
@@ -1829,7 +1827,7 @@ void FisherIndexing_domainSort(int size,int s)
 
   matrix_allocate(domi,size,size,double)
   matrix_allocate(flip_domi,size,size,double)
-  int class_count[24] = {0};
+  
 
   for(i=0;i< image_height - 2 * size +1 ;i+= SHIFT) {
     for(j=0;j< image_width - 2 * size +1 ;j+= SHIFT ) {
@@ -1890,13 +1888,14 @@ void FisherIndexing_domainSort(int size,int s)
   // for(int i = 0; i < 24; i++){
   //   printf("Class %d count = %d\n",i,class_count[i]);
   // }
-  
+  // printf(" Sorting Domain pool... \t");  
   for(int i=0; i < 3; i++){
     for(int j=0; j< 24 ;j ++){
+
       quickSort(&class_fisher[s][i][j]);
     }
   }
-
+  // printf(" Done \n");
   free(domi[0]);
   free(flip_domi[0]);
 }
@@ -1947,7 +1946,6 @@ void FisherIndexing(int size,int s)
       node -> var = variance_2(size,flip_domi,0,0);
       node -> next  = class_fisher[s][clas][var_class];
       class_fisher[s][clas][var_class] = node;
-      class_count[var_class]++;
       
     }
     printf(" Classification (Fisher) domain (%dx%d)  %d \r",size,size,count) ;
