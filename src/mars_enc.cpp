@@ -52,7 +52,7 @@
 #include "prot.h"
 
  using namespace cv;
-
+ 
 int main(int argc, char **argv)
 {
   int i,j,k,max;
@@ -88,23 +88,23 @@ int main(int argc, char **argv)
   image_height = h;
 
   std::vector<Mat> yuvChannels(3);
-  // if(input_image.channels() == 3){
-  //   isColor = 1;
+  if(input_image.channels() == 3){
+    isColor = 1;
     
-  //   cvtColor(input_image, input_image, CV_BGR2YUV);
-  //   split(input_image, yuvChannels);
-  //   matrix_allocate(image, w+1, h+1, PIXEL);
-  //   matrix_allocate(image_uch, w+1, h+1, PIXEL);
-  //   matrix_allocate(image_vch, w+1, h+1, PIXEL);
-  //   for (int iii = 0; iii < w; iii++) {
-  //     for (int jjj = 0; jjj < h; jjj++) {
-  //       image[jjj][iii] = yuvChannels[0].at<uchar>(jjj, iii);
-  //       image_uch[jjj][iii] = yuvChannels[1].at<uchar>(jjj, iii);
-  //       image_vch[jjj][iii] = yuvChannels[2].at<uchar>(jjj, iii);
-  //     }
-  //   }
-  // }
-  // else{
+    cvtColor(input_image, input_image, CV_BGR2YUV);
+    split(input_image, yuvChannels);
+    matrix_allocate(image, w+1, h+1, PIXEL);
+    matrix_allocate(image_uch, w+1, h+1, PIXEL);
+    matrix_allocate(image_vch, w+1, h+1, PIXEL);
+    for (int iii = 0; iii < w; iii++) {
+      for (int jjj = 0; jjj < h; jjj++) {
+        image[jjj][iii] = yuvChannels[0].at<uchar>(jjj, iii);
+        image_uch[jjj][iii] = yuvChannels[1].at<uchar>(jjj, iii);
+        image_vch[jjj][iii] = yuvChannels[2].at<uchar>(jjj, iii);
+      }
+    }
+  }
+  else{
     cvtColor(input_image,input_image,CV_RGB2GRAY);
     matrix_allocate(image, w, h, PIXEL);
     for (int iii = 0; iii < w; iii++) {
@@ -112,7 +112,7 @@ int main(int argc, char **argv)
         image[jjj][iii] = input_image.at<uchar>(jjj, iii);
       }
     }
-  // }
+   }
 
 
   max = image_height;
@@ -123,6 +123,7 @@ int main(int argc, char **argv)
 
   matrix_allocate(contract,1+image_width / 2,1+image_height / 2,double)
   matrix_allocate(qtt,virtual_size,virtual_size,PIXEL)
+  matrix_allocate(hv,virtual_size+1,virtual_size+1,PIXEL)
   matrix_allocate(range_tmp,64,64,double)
   matrix_allocate(flip_range,64,64,double)
   matrix_allocate(range,64,64,double)
@@ -305,7 +306,7 @@ int main(int argc, char **argv)
           class_fisher[k][h][i] = NULL;
 
       Indexing = FisherIndexing;
-      Coding = AdaptiveSearch_FisherCoding;
+      Coding = FisherCoding;
       printf(" Speed-up method: Fisher Coding\n\n");
       break;
       
@@ -446,9 +447,10 @@ int main(int argc, char **argv)
       
       for(k=0;k<64;k++)
       for(l=0;l< 64 ;l++)
-      for(h=0;h<24;h++)
+      for(h=0;h<24;h++){
           adaptive_fisher_class[k][l][h] = NULL;
 
+      }
       HV_Indexing = HV_FisherIndexing;
       HV_Coding = HV_FisherCoding;
       printf(" Speed-up method: Fisher with HV parition\n\n");
@@ -463,7 +465,7 @@ int main(int argc, char **argv)
   } 
 
   // contraction(contract,image,0,0);
-  
+
   switch(partition_type){
 
     case Quadtree:
@@ -484,15 +486,15 @@ int main(int argc, char **argv)
 
     case HV:
         
-        for(i= min_size; i<= max_size; i+=2) {
-          for(j=min_size; j<= max_size; j+=2){
+        for(i= min_size; i<= max_size; i+=1) {
+          for(j=min_size; j<= max_size; j+=1){
             HV_Indexing( i, j ) ;
           }
         }
 
     break;
   }
- 
+
  
 // exit(0);
   bits_per_coordinate_w = ceil(log(image_width  / SHIFT ) / log(2.0));
@@ -517,6 +519,15 @@ int main(int argc, char **argv)
     qtt[0][k] = 0;
     qtt[virtual_size-1][k] = 0;
   }
+
+  // for(int r=0; r < virtual_size; ++r)
+  //   for(int c=0; c < virtual_size; ++c)
+  //     qtt[r][c] = image[r][c];
+
+for(int r=0; r < virtual_size; ++r)
+    for(int c=0; c < virtual_size; ++c)
+      hv[r][c] = image[r][c];
+  
 
   int_max_alfa = 0.5 + (MAX_ALFA )/( 8.0)* (1 << 8);
   if(int_max_alfa < 0)  int_max_alfa = 0;
@@ -576,6 +587,7 @@ int main(int argc, char **argv)
   // printf(" Color              : %s\n\n", isColor?"True":"False");
 
   if(isNonlinear)
+    
     Nonlinear_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
   else if(isLumInv)
     LumInv_quadtree(0,0,virtual_size,T_ENT,T_RMS,T_VAR);
@@ -606,6 +618,10 @@ int main(int argc, char **argv)
   printf(" To execute Compression tooks: %f sec  \n", time_taken);
   printf(" %d bytes written in %s\n",i,fileout);
 
+    writeimage_pgm("hv_partition.pgm",hv,image_width,image_height); 
+
+  if(qtree) 
+    writeimage_pgm("quadtree.pgm",qtt,image_width,image_height); 
 
 
     char rows[10], cols[10];
@@ -614,12 +630,15 @@ int main(int argc, char **argv)
   char *token ;
   int tok_count = 1;
   token = strtok(filein,"/");
-  while(token != NULL && ++tok_count != 4){
+  char *last_token;
+  while(token != NULL){
    // printf("token: %s\n",token);
+    last_token = token;
     token = strtok(NULL, "/");
    
   }
-  
+   // printf("token: %s\n",last_token);
+  token = last_token;
   
   char image_name[strlen(token) + strlen(rows)+strlen(cols)+4];
   strcat(image_name,token);
@@ -629,7 +648,7 @@ int main(int argc, char **argv)
   strcat(image_name," x ");
   strcat(image_name,cols);
   strcat(image_name,")");
-  FILE *outFile = fopen("./result/others/proposed/output.csv","a+");
+  FILE *outFile = fopen("./result/as_fisher_m_hv/output.rms.csv","a+");
   fprintf(outFile,"%s\t%d\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t",image_name,SHIFT,T_RMS,time_taken,T_ENT,T_VAR,entropy(image_width,image_height,0,0),variance(image_width,image_height,0,0),COMPRESS,BPP);
   //printf("Compress: %g \t Bpp: %g\n",COMPRESS,BPP);
   // printf("%s\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t",image_name,SHIFT,T_RMS,time_taken,T_ENT,T_VAR,entropy(image_width,image_height,0,0),variance(image_width,image_height,0,0),COMPRESS,BPP);

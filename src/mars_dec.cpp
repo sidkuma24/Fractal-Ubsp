@@ -43,16 +43,16 @@
 #include "globals.h"
 #include "triangle.h"
 #include "prot.h"
-//#include <vector>
+//include <vector>
 
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
-#include "GMRsaliency.h"
+// #include "GMRsaliency.h"
 
 
-
+  cv::Mat sal_img;
 int main(int argc, char **argv)
 {
   int int_max_alfa,step;
@@ -153,11 +153,22 @@ int main(int argc, char **argv)
     matrix_allocate(image_vch,2+image_width,2+image_height,PIXEL)
   }
 
-  Mat img = imread("lenna.pgm", CV_LOAD_IMAGE_GRAYSCALE);
-  GMRsaliency GMRsal;
-  Mat sal=GMRsal.GetSal(img);
+  // Mat img = imread("lenna.pgm", CV_LOAD_IMAGE_GRAYSCALE);
+  // GMRsaliency GMRsal;
+  // Mat sal=GMRsal.GetSal(img);
 
-  imwrite("sal_image.png",sal*255);
+  // imwrite("sal_image.png",sal*255);
+
+  sal_img = cv::imread("./saliency/sal_image.png", CV_LOAD_IMAGE_GRAYSCALE);
+
+  cv::threshold(sal_img,sal_img,0,255,0);
+  cv::imwrite("sal_img_thresh.png",sal_img);
+
+  // for(int r=0; r< sal_img.rows; ++r)
+  //   for(int c=0; c< sal_img.cols; ++c)
+  //       printf(",%u",sal_img.at<uchar>(r,c));
+
+
 
   if(isNonlinear){
     read_transformations_nonlinear(0,0,virtual_size);
@@ -269,28 +280,28 @@ int main(int argc, char **argv)
   if(postproc) 
      smooth_image(); 
 
-  if( isColor ){ // Conver to RGB
-    std::vector<Mat> yuvChannels;
-    Mat ych(image_height,image_width, CV_8U);
-    Mat uch(image_height,image_width, CV_8U);
-    Mat vch(image_height,image_width, CV_8U);
-    yuvChannels.push_back(ych);
-    yuvChannels.push_back(uch);
-    yuvChannels.push_back(vch);
+  // if( isColor ){ // Conver to RGB
+  //   std::vector<Mat> yuvChannels;
+  //   Mat ych(image_height,image_width, CV_8U);
+  //   Mat uch(image_height,image_width, CV_8U);
+  //   Mat vch(image_height,image_width, CV_8U);
+  //   yuvChannels.push_back(ych);
+  //   yuvChannels.push_back(uch);
+  //   yuvChannels.push_back(vch);
 
-    for (int iii = 0; iii < image_width; iii++) {
-      for (int jjj = 0; jjj < image_height; jjj++) {
-        yuvChannels[0].at<uchar>(jjj,iii) = image[jjj][iii];
-        yuvChannels[1].at<uchar>(jjj,iii) = image_uch[jjj][iii];
-        yuvChannels[2].at<uchar>(jjj,iii) = image_vch[jjj][iii];
-      }
-    }
-    merge(yuvChannels, ych);
-    cvtColor(ych, ych, CV_YUV2BGR);
-    printf("Writing... output.dec.ppm");
-    imwrite(fileout, ych);
+  //   for (int iii = 0; iii < image_width; iii++) {
+  //     for (int jjj = 0; jjj < image_height; jjj++) {
+  //       yuvChannels[0].at<uchar>(jjj,iii) = image[jjj][iii];
+  //       yuvChannels[1].at<uchar>(jjj,iii) = image_uch[jjj][iii];
+  //       yuvChannels[2].at<uchar>(jjj,iii) = image_vch[jjj][iii];
+  //     }
+  //   }
+  //   merge(yuvChannels, ych);
+  //   cvtColor(ych, ych, CV_YUV2BGR);
+  //   printf("Writing... output.dec.ppm");
+  //   imwrite(fileout, ych);
     
-  }
+  // }
 
   if(display)  {
      if ( pipe(pipe_disp)) 
@@ -313,10 +324,10 @@ int main(int argc, char **argv)
      writeimage_pipe(output, image,image_width,image_height);
   } 
   else 
-    if(raw_format)  {}
-       // writeimage_raw(fileout, image,image_width,image_height);
-    else{}
-      // writeimage_pgm(fileout, image,image_width,image_height);
+    if(raw_format) 
+       writeimage_raw(fileout, image,image_width,image_height);
+    else
+      writeimage_pgm(fileout, image,image_width,image_height);
     
     
      
@@ -626,16 +637,12 @@ void read_transformations_nonlinear(int atx,int aty,int size)
       }
 
       /* Compute alfa from the quantized value */
-<<<<<<< HEAD
+
        // alfa1 = (qalfa1 - 15) * 0.1;
        // alfa2 = (qalfa2 - 15) * 0.001;
       alfa1 = (double) qalfa1 / (double)(1 << N_BITALFA1) * ( MAX_ALFA1) ;
       alfa2 = (double) qalfa2 / (double)(1 << N_BITALFA2) * ( MAX_ALFA2) ;
-=======
-       alfa1 = (qalfa1 - 15) * 0.1;
-       alfa2 = (qalfa2 - 15) * 0.001;
-      
->>>>>>> 4d466d691a1cbf5bc45d429a910f079a7d690d53
+
 
       
       /* Compute beta from the quantized value */
@@ -983,6 +990,25 @@ void read_transformations(int atx,int aty,int size)
       }
 
       /* for progressive decoding */
+      // int roi_count = 0, non_roi_count = 0;
+      // for(int r=aty; r < aty+size; ++r){
+      //   for(int c=atx; c < atx+size; ++c){
+
+      //      if(sal_img.at<uchar>(r,c) == 255){
+      //         roi_count++;
+      //      }else{
+      //         non_roi_count++;
+      //      }
+      //   }
+      // }
+      // // printf("roi_count = %d",roi_count);
+      // if(roi_count < non_roi_count)
+      //     N_BITS = 8;
+      // else
+      //     N_BITS = 8; 
+
+        // printf("N_BITS=%d\n",N_BITS);
+      N_BITS = 8;
       int pqalfa = 0,pqbeta = 0;
       for(int b=0; b < N_BITS; ++b){
         if(N_BITS < N_BITALFA)

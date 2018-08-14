@@ -21,3 +21,9 @@ diff
 *.pgm
 *.tiff
 *.ifs
+build
+result
+data
+saliency
+test
+

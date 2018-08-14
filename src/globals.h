@@ -285,6 +285,6 @@ EXTERN int isHV INIT(=0);
 
 
 /* progressive decoding */
-EXTERN int N_BITS INIT(=3);
+EXTERN int N_BITS INIT(=7);
 
 extern int class_count[24];
