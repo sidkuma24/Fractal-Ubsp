@@ -5,7 +5,6 @@ log.txt
 *.cmake
 CMakeFiles/
 CMakeCache.txt
-lena.dec.pgm
 lena.ifs
 Makefile
 Color
@@ -18,7 +17,6 @@ result
 saliency
 diff
 *.txt
-*.pgm
 *.tiff
 *.ifs
 build
@@ -26,4 +24,3 @@ result
 data
 saliency
 test
-
