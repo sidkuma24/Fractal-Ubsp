@@ -13,6 +13,25 @@ This paper presents a novel approach to calculate the affine parameters of fract
 ## Experimental Data
  
  The effectiveness of the proposed method has been tested on bechmark images from [USC-SIPI Image Database](http://sipi.usc.edu/database/).
+ 
+ 
+ | Image   | Quality | Fisher | Polvere | Saupe | Hurtgen | Saupe-MC | Proposed-Quadtree | Propsoed-HV |
+|---------|---------|--------|---------|-------|---------|----------|-------------------|-------------|
+| Baboon  | PSNR    | 24.28  | 24.43   | 25.54 | 24.41   | 24.45    | 25.21             | 25.80       |
+|         | BPP     | 0.60   | 0.61    | 0.60  | 0.60    | 0.60     | 0.60              | 0.60        |
+|         | Time    | 1.60   | 2.80    | 25.40 | 2.8     | 3.37     | 1.57              | 8.90        |
+| Boat    | PSNR    | 33.95  | 34.82   | 35.61 | 34.62   | 34.63    | 34.21             | 35.83       |
+|         | BPP     | 0.60   | 0.60    | 0.60  | 0.60    | 0.61     | 0.60              | 0.60        |
+|         | Time    | 2.40   | 4.70    | 12.40 | 4.07    | 4.60     | 2.19              | 11.20       |
+| Lenna   | PSNR    | 35.58  | 36.10   | 36.20 | 35.90   | 36.90    | 36.12             | 37.67       |
+|         | BPP     | 0.60   | 0.60    | 0.60  | 0.59    | 0.60     | 0.60              | 0.60        |
+|         | Time    | 2.20   | 3.60    | 13.20 | 3.50    | 4.30     | 1.90              | 12.19       |
+| Man     | PSNR    | 30.19  | 30.50   | 31.80 | 30.45   | 30.44    | 31.25             | 32.60       |
+|         | BPP     | 0.60   | 0.60    | 0.60  | 0.61    | 0.60     | 0.60              | 0.71        |
+|         | Time    | 1.8    | 2.9     | 15.4  | 3.30    | 3.90     | 1.15              | 11.60       |
+| Average | PSNR    | 31     | 31.46   | 31.25 | 31.35   | 31.35    | 31.69             | 37.72       |
+|         | BPP     | 0.60   | 0.60    | 0.60  | 0.60    | 0.60     | 0.60              | 0.60        |
+|         | Time    | 2.00   | 3.50    | 14.10 | 3.41    | 4.04     | 1.70              | 10.97       |
 
 ## Results
 
