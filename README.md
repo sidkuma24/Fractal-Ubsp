@@ -14,7 +14,13 @@ This paper presents a novel approach to calculate the affine parameters of fract
  
  The effectiveness of the proposed method has been tested on bechmark images from [USC-SIPI Image Database](http://sipi.usc.edu/database/).
  
- 
+## Results
+
+[](lenna_512x512.pdf)
+
+
+Comparison of proposed scheme with other conventional fractal coders, w.r.t. PSNR, BPP, and Time (in sec), for four standard images.
+
  | Image   | Quality | Fisher | Polvere | Saupe | Hurtgen | Saupe-MC | Proposed-Quadtree | Propsoed-HV |
 |---------|---------|--------|---------|-------|---------|----------|-------------------|-------------|
 | Baboon  | PSNR    | 24.28  | 24.43   | 25.54 | 24.41   | 24.45    | 25.21             | 25.80       |
@@ -32,11 +38,6 @@ This paper presents a novel approach to calculate the affine parameters of fract
 | Average | PSNR    | 31     | 31.46   | 31.25 | 31.35   | 31.35    | 31.69             | 37.72       |
 |         | BPP     | 0.60   | 0.60    | 0.60  | 0.60    | 0.60     | 0.60              | 0.60        |
 |         | Time    | 2.00   | 3.50    | 14.10 | 3.41    | 4.04     | 1.70              | 10.97       |
-
-## Results
-
-Comparison of proposed scheme with other conventional fractal coders, w.r.t. PSNR, BPP, and Time (in sec), for four standard images.
-
 
 ## Citation
 
