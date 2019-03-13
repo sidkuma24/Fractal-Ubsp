@@ -1,6 +1,7 @@
 # Fractal Image Compression Using Upper Bound on Scaling Parameter
 
-This repository contains an implementation of the paper "Fractal image compression using upper bound on scaling parameter" - ([link to the ScienceDirect page](https://www.sciencedirect.com/science/article/pii/S0960077917304691))
+This repository contains an implementation of the paper "Fractal image compression using upper bound on scaling parameter" - ([link to the ScienceDirect page](https://www.sciencedirect.com/science/article/pii/S0960077917304691)).
+The implementation is based on https://github.com/daleobrien/fractal_mars.
 ```
 Roy, S.K., Kumar, S., Chanda, B., Chaudhuri, B.B. and Banerjee, S., 2018. Fractal image compression 
 using upper bound on scaling parameter. Chaos, Solitons & Fractals, 106, pp.16-22.
