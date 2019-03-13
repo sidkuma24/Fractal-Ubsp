@@ -7,7 +7,7 @@ using upper bound on scaling parameter. Chaos, Solitons & Fractals, 106, pp.16-2
 ```            
             
 ## Description
-This paper presents a novel approach to calculate the affine parameters of fractal encoding, in order to reduce its computational complexity. A simple but efficient approximation of the scaling parameter is derived which satisfies all properties necessary to achieve convergence. It allows us to substitute to the costly process of matrix multiplication with a simple division of two numbers. We have also proposed a modified horizontal-vertical (HV) block partitioning scheme, and some new ways to improve the en- coding time and decoded quality, over their conventional counterparts. Experiments on standard images show that our approach yields performance similar to the state-of-the-art fractal based image compres- sion methods, in much less time
+This paper presents a novel approach to calculate the affine parameters of fractal encoding, in order to reduce its computational complexity. A simple but efficient approximation of the scaling parameter is derived which satisfies all properties necessary to achieve convergence. It allows us to substitute to the costly process of matrix multiplication with a simple division of two numbers. We have also proposed a modified horizontal-vertical (HV) block partitioning scheme, and some new ways to improve the en-coding time and decoded quality, over their conventional counterparts. Experiments on standard images show that our approach yields performance similar to the state-of-the-art fractal based image compres- sion methods, in much less time
 
 
 ## Experimental Data
@@ -16,8 +16,14 @@ This paper presents a novel approach to calculate the affine parameters of fract
  
 ## Results
 
-[](lenna_512x512.pdf)
 
+![](https://github.com/sidkuma24/Fractal/blob/master/assets/lenna.jpg)  |  ![](https://github.com/sidkuma24/Fractal/blob/master/assets/lenna.dec.jpg) 
+:-------------------------:|:-------------------------:
+(a) Lenna (512 x 512) |  (b) Decoded (PSNR: 37.67dB, SSIM: 94.20%, BPP: 0.60)
+
+![](https://github.com/sidkuma24/Fractal/blob/master/assets/baboon.jpg)  |  ![](https://github.com/sidkuma24/Fractal/blob/master/assets/baboon.dec.jpg) 
+:-------------------------:|:-------------------------:
+(a) Baboon (512 x 512) |  (b) Decoded (PSNR: 25.80dB, SSIM: 72.30%, BPP: 0.60)
 
 Comparison of proposed scheme with other conventional fractal coders, w.r.t. PSNR, BPP, and Time (in sec), for four standard images.
 
@@ -39,6 +45,37 @@ Comparison of proposed scheme with other conventional fractal coders, w.r.t. PSN
 |         | BPP     | 0.60   | 0.60    | 0.60  | 0.60    | 0.60     | 0.60              | 0.60        |
 |         | Time    | 2.00   | 3.50    | 14.10 | 3.41    | 4.04     | 1.70              | 10.97       |
 
+
+## Building and Running
+
+1.  Dependencies:
+```
+CMake 2.8 or above
+OpenCV 2.4 or above
+```
+2. Build using CMake:
+In the project root directory, run:
+```
+$ cmake .
+$ make 
+```
+This will generate fcom and fdcom respectively
+
+3. Compressing Images:
+See the usuage and option using the following command.
+```
+$ ./fcom -h 
+```
+For exmaple, to compress using 'Fisher Classificaition and adaptive quadtree patitioning':
+```
+$ ./fcom -FQ lenna.pgm lenna.dec.pgm
+```
+Also try other options like RMS threshold and Domain Step:
+```
+$ ./fcom -FQ -r 8 lenna.pgm lenna.dec.pgm -d 4
+```
+NOTE: Make sure the input image is grayscale.
+
 ## Citation
 
 If you use this code or a derivative thereof in your research, we would appreciate a citation to the original paper:
@@ -53,4 +90,5 @@ If you use this code or a derivative thereof in your research, we would apprecia
         year={2018},
         publisher={Elsevier}}
 ```
+
 
